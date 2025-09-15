@@ -118,3 +118,83 @@ class PositionalEncoding(nn.Module):
     def __init__(self, embed_dim: int, max_len: int = 5000):
         """
         Initialize positional encoding.
+        
+        Args:
+            embed_dim: Embedding dimension
+            max_len: Maximum sequence length
+        """
+        super().__init__()
+        
+        pe = torch.zeros(max_len, embed_dim)
+        position = torch.arange(0, max_len, dtype=torch.float).unsqueeze(1)
+        
+        div_term = torch.exp(torch.arange(0, embed_dim, 2).float() * 
+                           (-math.log(10000.0) / embed_dim))
+        
+        pe[:, 0::2] = torch.sin(position * div_term)
+        pe[:, 1::2] = torch.cos(position * div_term)
+        pe = pe.unsqueeze(0).transpose(0, 1)
+        
+        self.register_buffer('pe', pe)
+        
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """
+        Add positional encoding to input.
+        
+        Args:
+            x: Input tensor of shape (seq_len, batch_size, embed_dim)
+            
+        Returns:
+            Tensor with positional encoding added
+        """
+        return x + self.pe[:x.size(0), :]
+
+
+class BiLSTMEncoder(nn.Module):
+    """
+    Bidirectional LSTM encoder with optional attention mechanism.
+    """
+    
+    def __init__(
+        self,
+        vocab_size: int,
+        embed_dim: int = 300,
+        hidden_dim: int = 512,
+        num_layers: int = 2,
+        dropout: float = 0.3,
+        bidirectional: bool = True,
+        use_attention: bool = True,
+        num_attention_heads: int = 8,
+        pretrained_embeddings: Optional[torch.Tensor] = None,
+        freeze_embeddings: bool = False
+    ):
+        """
+        Initialize BiLSTM encoder.
+        
+        Args:
+            vocab_size: Size of vocabulary
+            embed_dim: Embedding dimension
+            hidden_dim: Hidden dimension of LSTM
+            num_layers: Number of LSTM layers
+            dropout: Dropout probability
+            bidirectional: Whether to use bidirectional LSTM
+            use_attention: Whether to use attention mechanism
+            num_attention_heads: Number of attention heads
+            pretrained_embeddings: Pretrained embedding matrix
+            freeze_embeddings: Whether to freeze embedding weights
+        """
+        super().__init__()
+        
+        self.vocab_size = vocab_size
+        self.embed_dim = embed_dim
+        self.hidden_dim = hidden_dim
+        self.num_layers = num_layers
+        self.bidirectional = bidirectional
+        self.use_attention = use_attention
+        
+        # Embedding layer
+        self.embedding = nn.Embedding(vocab_size, embed_dim, padding_idx=0)
+        if pretrained_embeddings is not None:
+            self.embedding.weight.data.copy_(pretrained_embeddings)
+        if freeze_embeddings:
+            self.embedding.weight.requires_grad = False
