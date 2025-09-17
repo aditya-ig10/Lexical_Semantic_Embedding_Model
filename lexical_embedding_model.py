@@ -498,3 +498,166 @@ class LexicalSemanticEmbeddingModel(nn.Module):
     ) -> torch.Tensor:
         """
         Get sentence embedding for a single sequence.
+        
+        Args:
+            input_ids: Input token IDs
+            attention_mask: Attention mask
+            
+        Returns:
+            Sentence embedding
+        """
+        return self.encode_sequence(input_ids, attention_mask)
+    
+    def save_model(self, path: Union[str, Path], include_config: bool = True):
+        """
+        Save model to disk.
+        
+        Args:
+            path: Path to save the model
+            include_config: Whether to save model configuration
+        """
+        path = Path(path)
+        path.mkdir(parents=True, exist_ok=True)
+        
+        # Save model state dict
+        torch.save(self.state_dict(), path / "model.pt")
+        
+        if include_config:
+            config = {
+                'vocab_size': self.encoder.vocab_size,
+                'embed_dim': self.encoder.embed_dim,
+                'hidden_dim': self.encoder.hidden_dim,
+                'num_layers': self.encoder.num_layers,
+                'similarity_function': self.similarity_function,
+                'output_dim': self.output_dim
+            }
+            
+            with open(path / "config.json", "w") as f:
+                json.dump(config, f, indent=2)
+        
+        logger.info(f"Model saved to {path}")
+    
+    @classmethod
+    def load_model(
+        cls, 
+        path: Union[str, Path], 
+        device: Optional[torch.device] = None
+    ) -> 'LexicalSemanticEmbeddingModel':
+        """
+        Load model from disk.
+        
+        Args:
+            path: Path to load the model from
+            device: Device to load the model on
+            
+        Returns:
+            Loaded model
+        """
+        path = Path(path)
+        
+        # Load configuration
+        with open(path / "config.json", "r") as f:
+            config = json.load(f)
+        
+        # Create model
+        model = cls(**config)
+        
+        # Load state dict
+        state_dict = torch.load(
+            path / "model.pt", 
+            map_location=device or torch.device('cpu')
+        )
+        model.load_state_dict(state_dict)
+        
+        if device:
+            model = model.to(device)
+        
+        logger.info(f"Model loaded from {path}")
+        return model
+    
+    def export_to_onnx(self, path: Union[str, Path], example_input: Dict[str, torch.Tensor]):
+        """
+        Export model to ONNX format.
+        
+        Args:
+            path: Path to save ONNX model
+            example_input: Example input for tracing
+        """
+        path = Path(path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        
+        # Set model to evaluation mode
+        self.eval()
+        
+        with torch.no_grad():
+            torch.onnx.export(
+                self,
+                (
+                    example_input['input_ids_1'],
+                    example_input['input_ids_2'],
+                    example_input.get('attention_mask_1'),
+                    example_input.get('attention_mask_2')
+                ),
+                str(path),
+                export_params=True,
+                opset_version=11,
+                do_constant_folding=True,
+                input_names=['input_ids_1', 'input_ids_2', 'attention_mask_1', 'attention_mask_2'],
+                output_names=['similarity', 'embedding1', 'embedding2'],
+                dynamic_axes={
+                    'input_ids_1': {0: 'batch_size', 1: 'sequence'},
+                    'input_ids_2': {0: 'batch_size', 1: 'sequence'},
+                    'attention_mask_1': {0: 'batch_size', 1: 'sequence'},
+                    'attention_mask_2': {0: 'batch_size', 1: 'sequence'},
+                    'similarity': {0: 'batch_size'},
+                    'embedding1': {0: 'batch_size'},
+                    'embedding2': {0: 'batch_size'}
+                }
+            )
+        
+        logger.info(f"Model exported to ONNX format at {path}")
+
+
+def create_model_from_config(config: Dict) -> LexicalSemanticEmbeddingModel:
+    """
+    Create model from configuration dictionary.
+    
+    Args:
+        config: Configuration dictionary
+        
+    Returns:
+        Initialized model
+    """
+    return LexicalSemanticEmbeddingModel(**config)
+
+
+if __name__ == "__main__":
+    # Example usage
+    vocab_size = 30000
+    model = LexicalSemanticEmbeddingModel(
+        vocab_size=vocab_size,
+        embed_dim=300,
+        hidden_dim=512,
+        num_layers=2,
+        similarity_function='learned'
+    )
+    
+    # Example input
+    batch_size = 4
+    seq_len = 32
+    
+    input_ids_1 = torch.randint(1, vocab_size, (batch_size, seq_len))
+    input_ids_2 = torch.randint(1, vocab_size, (batch_size, seq_len))
+    attention_mask_1 = torch.ones(batch_size, seq_len)
+    attention_mask_2 = torch.ones(batch_size, seq_len)
+    
+    # Forward pass
+    outputs = model(input_ids_1, input_ids_2, attention_mask_1, attention_mask_2)
+    
+    print(f"Similarity scores shape: {outputs['similarity'].shape}")
+    print(f"Embedding 1 shape: {outputs['embedding1'].shape}")
+    print(f"Embedding 2 shape: {outputs['embedding2'].shape}")
+    
+    # Get single sentence embedding
+    sentence_embedding = model.get_sentence_embedding(input_ids_1, attention_mask_1)
+    print(f"Sentence embedding shape: {sentence_embedding.shape}")
