@@ -198,3 +198,153 @@ class BiLSTMEncoder(nn.Module):
             self.embedding.weight.data.copy_(pretrained_embeddings)
         if freeze_embeddings:
             self.embedding.weight.requires_grad = False
+            
+        # Positional encoding
+        self.pos_encoding = PositionalEncoding(embed_dim)
+        
+        # LSTM layers
+        self.lstm = nn.LSTM(
+            embed_dim,
+            hidden_dim,
+            num_layers,
+            dropout=dropout if num_layers > 1 else 0,
+            bidirectional=bidirectional,
+            batch_first=True
+        )
+        
+        # Calculate LSTM output dimension
+        lstm_output_dim = hidden_dim * (2 if bidirectional else 1)
+        
+        # Attention mechanism
+        if use_attention:
+            self.attention = MultiHeadAttention(
+                lstm_output_dim, 
+                num_attention_heads, 
+                dropout
+            )
+        
+        # Output projection
+        self.output_projection = nn.Linear(lstm_output_dim, embed_dim)
+        
+        # Dropout
+        self.dropout = nn.Dropout(dropout)
+        
+        # Layer normalization
+        self.layer_norm = nn.LayerNorm(embed_dim)
+        
+    def forward(
+        self, 
+        input_ids: torch.Tensor, 
+        attention_mask: Optional[torch.Tensor] = None
+    ) -> Dict[str, torch.Tensor]:
+        """
+        Forward pass of the encoder.
+        
+        Args:
+            input_ids: Input token IDs of shape (batch_size, seq_len)
+            attention_mask: Attention mask of shape (batch_size, seq_len)
+            
+        Returns:
+            Dictionary containing:
+                - last_hidden_state: Final hidden states
+                - pooler_output: Pooled representation
+                - attention_weights: Attention weights (if attention is used)
+        """
+        batch_size, seq_len = input_ids.size()
+        
+        # Embedding
+        embeddings = self.embedding(input_ids)
+        embeddings = self.dropout(embeddings)
+        
+        # Add positional encoding
+        embeddings = embeddings.transpose(0, 1)  # (seq_len, batch_size, embed_dim)
+        embeddings = self.pos_encoding(embeddings)
+        embeddings = embeddings.transpose(0, 1)  # (batch_size, seq_len, embed_dim)
+        
+        # Pack padded sequences if attention mask is provided
+        if attention_mask is not None:
+            lengths = attention_mask.sum(dim=1).cpu()
+            embeddings = nn.utils.rnn.pack_padded_sequence(
+                embeddings, lengths, batch_first=True, enforce_sorted=False
+            )
+        
+        # LSTM
+        lstm_output, (hidden, cell) = self.lstm(embeddings)
+        
+        # Unpack if we packed
+        if attention_mask is not None:
+            lstm_output, _ = nn.utils.rnn.pad_packed_sequence(
+                lstm_output, batch_first=True
+            )
+        
+        # Apply attention if enabled
+        attention_weights = None
+        if self.use_attention:
+            # Create attention mask for padded positions
+            if attention_mask is not None:
+                attn_mask = attention_mask.unsqueeze(1).unsqueeze(2)
+                attn_mask = attn_mask.expand(-1, lstm_output.size(1), -1, -1)
+            else:
+                attn_mask = None
+                
+            lstm_output = self.attention(lstm_output, attn_mask)
+        
+        # Output projection
+        last_hidden_state = self.output_projection(lstm_output)
+        last_hidden_state = self.layer_norm(last_hidden_state)
+        
+        # Pooling: mean pooling over non-padded positions
+        if attention_mask is not None:
+            # Expand attention mask to match hidden state dimensions
+            mask_expanded = attention_mask.unsqueeze(-1).expand(last_hidden_state.size())
+            # Apply mask and compute mean
+            sum_embeddings = torch.sum(last_hidden_state * mask_expanded, dim=1)
+            sum_mask = torch.clamp(mask_expanded.sum(dim=1), min=1e-9)
+            pooler_output = sum_embeddings / sum_mask
+        else:
+            pooler_output = torch.mean(last_hidden_state, dim=1)
+        
+        return {
+            'last_hidden_state': last_hidden_state,
+            'pooler_output': pooler_output,
+            'attention_weights': attention_weights
+        }
+
+
+class LexicalSemanticEmbeddingModel(nn.Module):
+    """
+    Complete Lexical Semantic Embedding Model with siamese architecture
+    for semantic similarity tasks.
+    """
+    
+    def __init__(
+        self,
+        vocab_size: int,
+        embed_dim: int = 300,
+        hidden_dim: int = 512,
+        num_layers: int = 2,
+        dropout: float = 0.3,
+        num_attention_heads: int = 8,
+        similarity_function: str = 'cosine',
+        pretrained_embeddings: Optional[torch.Tensor] = None,
+        freeze_embeddings: bool = False,
+        output_dim: int = 1
+    ):
+        """
+        Initialize the complete model.
+        
+        Args:
+            vocab_size: Size of vocabulary
+            embed_dim: Embedding dimension
+            hidden_dim: Hidden dimension of LSTM
+            num_layers: Number of LSTM layers
+            dropout: Dropout probability
+            num_attention_heads: Number of attention heads
+            similarity_function: Similarity function ('cosine', 'euclidean', 'manhattan')
+            pretrained_embeddings: Pretrained embedding matrix
+            freeze_embeddings: Whether to freeze embedding weights
+            output_dim: Output dimension (1 for similarity score)
+        """
+        super().__init__()
+        
+        self.similarity_function = similarity_function
