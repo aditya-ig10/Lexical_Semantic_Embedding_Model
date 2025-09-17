@@ -348,3 +348,153 @@ class LexicalSemanticEmbeddingModel(nn.Module):
         super().__init__()
         
         self.similarity_function = similarity_function
+        self.output_dim = output_dim
+        
+        # Shared encoder
+        self.encoder = BiLSTMEncoder(
+            vocab_size=vocab_size,
+            embed_dim=embed_dim,
+            hidden_dim=hidden_dim,
+            num_layers=num_layers,
+            dropout=dropout,
+            bidirectional=True,
+            use_attention=True,
+            num_attention_heads=num_attention_heads,
+            pretrained_embeddings=pretrained_embeddings,
+            freeze_embeddings=freeze_embeddings
+        )
+        
+        # Similarity computation layers
+        if similarity_function == 'learned':
+            # Learned similarity with element-wise operations
+            self.similarity_net = nn.Sequential(
+                nn.Linear(embed_dim * 4, embed_dim * 2),  # concat, abs_diff, hadamard, cosine
+                nn.ReLU(),
+                nn.Dropout(dropout),
+                nn.Linear(embed_dim * 2, embed_dim),
+                nn.ReLU(),
+                nn.Dropout(dropout),
+                nn.Linear(embed_dim, output_dim)
+            )
+        else:
+            # Simple projection for traditional similarity functions
+            self.similarity_net = nn.Linear(embed_dim, output_dim)
+        
+        # Initialize weights
+        self._init_weights()
+        
+    def _init_weights(self):
+        """Initialize model weights."""
+        for module in self.modules():
+            if isinstance(module, nn.Linear):
+                nn.init.xavier_uniform_(module.weight)
+                if module.bias is not None:
+                    nn.init.zeros_(module.bias)
+            elif isinstance(module, nn.LSTM):
+                for name, param in module.named_parameters():
+                    if 'weight' in name:
+                        nn.init.xavier_uniform_(param)
+                    elif 'bias' in name:
+                        nn.init.zeros_(param)
+    
+    def encode_sequence(
+        self, 
+        input_ids: torch.Tensor, 
+        attention_mask: Optional[torch.Tensor] = None
+    ) -> torch.Tensor:
+        """
+        Encode a sequence to its embedding representation.
+        
+        Args:
+            input_ids: Input token IDs
+            attention_mask: Attention mask
+            
+        Returns:
+            Sequence embedding
+        """
+        outputs = self.encoder(input_ids, attention_mask)
+        return outputs['pooler_output']
+    
+    def compute_similarity(
+        self, 
+        embedding1: torch.Tensor, 
+        embedding2: torch.Tensor
+    ) -> torch.Tensor:
+        """
+        Compute similarity between two embeddings.
+        
+        Args:
+            embedding1: First embedding
+            embedding2: Second embedding
+            
+        Returns:
+            Similarity score
+        """
+        if self.similarity_function == 'cosine':
+            # Cosine similarity
+            similarity = F.cosine_similarity(embedding1, embedding2, dim=-1)
+            return self.similarity_net(embedding1).squeeze(-1) * similarity
+            
+        elif self.similarity_function == 'euclidean':
+            # Negative euclidean distance (higher = more similar)
+            distance = torch.norm(embedding1 - embedding2, p=2, dim=-1)
+            return -distance
+            
+        elif self.similarity_function == 'manhattan':
+            # Negative manhattan distance
+            distance = torch.norm(embedding1 - embedding2, p=1, dim=-1)
+            return -distance
+            
+        elif self.similarity_function == 'learned':
+            # Learned similarity function
+            # Concatenate different interaction features
+            concat_features = torch.cat([embedding1, embedding2], dim=-1)
+            abs_diff = torch.abs(embedding1 - embedding2)
+            hadamard = embedding1 * embedding2
+            cosine_sim = F.cosine_similarity(embedding1, embedding2, dim=-1, keepdim=True)
+            
+            features = torch.cat([concat_features, abs_diff, hadamard, cosine_sim], dim=-1)
+            return self.similarity_net(features).squeeze(-1)
+        
+        else:
+            raise ValueError(f"Unknown similarity function: {self.similarity_function}")
+    
+    def forward(
+        self,
+        input_ids_1: torch.Tensor,
+        input_ids_2: torch.Tensor,
+        attention_mask_1: Optional[torch.Tensor] = None,
+        attention_mask_2: Optional[torch.Tensor] = None
+    ) -> Dict[str, torch.Tensor]:
+        """
+        Forward pass for similarity computation.
+        
+        Args:
+            input_ids_1: First sequence token IDs
+            input_ids_2: Second sequence token IDs
+            attention_mask_1: First sequence attention mask
+            attention_mask_2: Second sequence attention mask
+            
+        Returns:
+            Dictionary containing similarity scores and embeddings
+        """
+        # Encode both sequences
+        embedding1 = self.encode_sequence(input_ids_1, attention_mask_1)
+        embedding2 = self.encode_sequence(input_ids_2, attention_mask_2)
+        
+        # Compute similarity
+        similarity = self.compute_similarity(embedding1, embedding2)
+        
+        return {
+            'similarity': similarity,
+            'embedding1': embedding1,
+            'embedding2': embedding2
+        }
+    
+    def get_sentence_embedding(
+        self,
+        input_ids: torch.Tensor,
+        attention_mask: Optional[torch.Tensor] = None
+    ) -> torch.Tensor:
+        """
+        Get sentence embedding for a single sequence.
