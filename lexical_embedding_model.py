@@ -661,3 +661,5 @@ if __name__ == "__main__":
     # Get single sentence embedding
     sentence_embedding = model.get_sentence_embedding(input_ids_1, attention_mask_1)
     print(f"Sentence embedding shape: {sentence_embedding.shape}")
+
+# fix: correct attention scale by sqrt(head_dim), was sqrt(embed_dim)
