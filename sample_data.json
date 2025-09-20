@@ -1,0 +1,40 @@
+{
+  "datasets": {
+    "sts_benchmark": {
+      "description": "Semantic Textual Similarity Benchmark - measures semantic similarity on a 0-5 scale",
+      "samples": [
+        {
+          "sentence1": "The cat sat on the mat.",
+          "sentence2": "A feline rested on the rug.",
+          "score": 4.2,
+          "category": "high_similarity"
+        },
+        {
+          "sentence1": "He is playing football in the park.",
+          "sentence2": "He is playing soccer in the garden.",
+          "score": 4.5,
+          "category": "high_similarity"
+        },
+        {
+          "sentence1": "The weather is beautiful today.",
+          "sentence2": "It's a lovely day outside.",
+          "score": 3.8,
+          "category": "medium_similarity"
+        },
+        {
+          "sentence1": "I love eating pizza for dinner.",
+          "sentence2": "Pizza is my favorite evening meal.",
+          "score": 3.5,
+          "category": "medium_similarity"
+        },
+        {
+          "sentence1": "The book is on the table.",
+          "sentence2": "There's a novel on the desk.",
+          "score": 2.8,
+          "category": "medium_similarity"
+        },
+        {
+          "sentence1": "Machine learning is fascinating.",
+          "sentence2": "AI algorithms are interesting.",
+          "score": 3.9,
+          "category": "high_similarity"
