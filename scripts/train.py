@@ -148,3 +148,5 @@ class ModelTrainer:
         self.model = model
         self.train_config = train_config
         self.data_config = data_config
+
+# fix: move batch to device before forward, fixes CUDA/CPU mismatch
