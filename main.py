@@ -258,3 +258,143 @@ def load_configuration(config_path: str) -> Dict:
     spec = importlib.util.spec_from_file_location("config", config_path)
     config_module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(config_module)
+    
+    # Extract configuration
+    if hasattr(config_module, 'get_config'):
+        return config_module.get_config()
+    else:
+        # Look for config classes
+        for attr_name in dir(config_module):
+            attr = getattr(config_module, attr_name)
+            if isinstance(attr, type) and attr_name.endswith('Config'):
+                return attr().__dict__
+    
+    raise ValueError(f"No configuration found in {config_path}")
+
+
+def train_model(args: argparse.Namespace) -> None:
+    """
+    Train the semantic embedding model.
+    
+    Args:
+        args: Command line arguments
+    """
+    logger.info("Starting model training...")
+    
+    # Load configurations
+    try:
+        model_config = ModelConfig()
+        train_config = TrainingConfig()
+        data_config = DataConfig()
+    except Exception as e:
+        logger.error(f"Error loading configurations: {e}")
+        sys.exit(1)
+    
+    # Set device
+    device = get_device(args.gpu)
+    logger.info(f"Using device: {device}")
+    
+    # Create output directory
+    output_dir = Path(args.output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    
+    # Save configurations
+    save_config(model_config.__dict__, output_dir / "model_config.json")
+    save_config(train_config.__dict__, output_dir / "train_config.json")
+    save_config(data_config.__dict__, output_dir / "data_config.json")
+    
+    # Initialize model
+    model = LexicalSemanticEmbeddingModel(
+        vocab_size=model_config.vocab_size,
+        embed_dim=model_config.embed_dim,
+        hidden_dim=model_config.hidden_dim,
+        num_layers=model_config.num_layers,
+        dropout=model_config.dropout,
+        num_attention_heads=model_config.num_attention_heads,
+        similarity_function=model_config.similarity_function
+    )
+    
+    # Move model to device
+    model = model.to(device)
+    
+    # Initialize trainer
+    trainer = ModelTrainer(
+        model=model,
+        train_config=train_config,
+        data_config=data_config,
+        device=device,
+        output_dir=output_dir,
+        use_wandb=args.wandb
+    )
+    
+    # Resume from checkpoint if specified
+    if args.resume:
+        trainer.load_checkpoint(args.resume)
+        logger.info(f"Resumed training from {args.resume}")
+    
+    # Train model
+    trainer.train()
+    
+    logger.info("Training completed successfully!")
+
+
+def evaluate_model(args: argparse.Namespace) -> None:
+    """
+    Evaluate the trained model.
+    
+    Args:
+        args: Command line arguments
+    """
+    logger.info("Starting model evaluation...")
+    
+    # Load data configuration
+    try:
+        data_config = DataConfig()
+    except Exception as e:
+        logger.error(f"Error loading data configuration: {e}")
+        sys.exit(1)
+    
+    # Set device
+    device = get_device()
+    logger.info(f"Using device: {device}")
+    
+    # Load model
+    try:
+        model = LexicalSemanticEmbeddingModel.load_model(args.model_path, device)
+        logger.info(f"Model loaded from {args.model_path}")
+    except Exception as e:
+        logger.error(f"Error loading model: {e}")
+        sys.exit(1)
+    
+    # Create output directory
+    output_dir = Path(args.output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    
+    # Initialize evaluator
+    evaluator = ModelEvaluator(
+        model=model,
+        data_config=data_config,
+        device=device,
+        batch_size=args.batch_size
+    )
+    
+    # Evaluate on specified datasets
+    results = {}
+    for dataset in args.datasets:
+        logger.info(f"Evaluating on {dataset}...")
+        try:
+            result = evaluator.evaluate_dataset(dataset)
+            results[dataset] = result
+            logger.info(f"{dataset} evaluation completed: {result}")
+        except Exception as e:
+            logger.error(f"Error evaluating {dataset}: {e}")
+    
+    # Save results
+    results_file = output_dir / f"evaluation_results_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+    with open(results_file, 'w') as f:
+        json.dump(results, f, indent=2)
+    
+    logger.info(f"Evaluation results saved to {results_file}")
+
+
+def prepare_data(args: argparse.Namespace) -> None:
