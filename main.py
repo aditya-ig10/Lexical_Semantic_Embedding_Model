@@ -108,3 +108,153 @@ def parse_arguments() -> argparse.Namespace:
     eval_parser = subparsers.add_parser('evaluate', help='Evaluate the model')
     eval_parser.add_argument(
         '--model-path',
+        type=str,
+        required=True,
+        help='Path to trained model'
+    )
+    eval_parser.add_argument(
+        '--data-config',
+        type=str,
+        default='config/data_config.py',
+        help='Path to data configuration file'
+    )
+    eval_parser.add_argument(
+        '--output-dir',
+        type=str,
+        default='./evaluation_results',
+        help='Directory to save evaluation results'
+    )
+    eval_parser.add_argument(
+        '--datasets',
+        nargs='+',
+        default=['sts-benchmark', 'sick', 'quora'],
+        help='Datasets to evaluate on'
+    )
+    eval_parser.add_argument(
+        '--batch-size',
+        type=int,
+        default=32,
+        help='Evaluation batch size'
+    )
+    
+    # Data preparation command
+    data_parser = subparsers.add_parser('prepare-data', help='Download and prepare datasets')
+    data_parser.add_argument(
+        '--config',
+        type=str,
+        default='config/data_config.py',
+        help='Path to data configuration file'
+    )
+    data_parser.add_argument(
+        '--output-dir',
+        type=str,
+        default='./data',
+        help='Directory to save prepared data'
+    )
+    data_parser.add_argument(
+        '--datasets',
+        nargs='+',
+        default=['sts-benchmark', 'sick', 'quora', 'mrpc'],
+        help='Datasets to download and prepare'
+    )
+    data_parser.add_argument(
+        '--force',
+        action='store_true',
+        help='Force re-download and re-process data'
+    )
+    
+    # Inference command
+    infer_parser = subparsers.add_parser('infer', help='Run inference on text pairs')
+    infer_parser.add_argument(
+        '--model-path',
+        type=str,
+        required=True,
+        help='Path to trained model'
+    )
+    infer_parser.add_argument(
+        '--text1',
+        type=str,
+        required=True,
+        help='First text for similarity comparison'
+    )
+    infer_parser.add_argument(
+        '--text2',
+        type=str,
+        required=True,
+        help='Second text for similarity comparison'
+    )
+    infer_parser.add_argument(
+        '--tokenizer-path',
+        type=str,
+        default='./data/tokenizer.json',
+        help='Path to tokenizer'
+    )
+    
+    # Export command
+    export_parser = subparsers.add_parser('export', help='Export model to different formats')
+    export_parser.add_argument(
+        '--model-path',
+        type=str,
+        required=True,
+        help='Path to trained model'
+    )
+    export_parser.add_argument(
+        '--format',
+        choices=['onnx', 'torchscript', 'tflite'],
+        default='onnx',
+        help='Export format'
+    )
+    export_parser.add_argument(
+        '--output-path',
+        type=str,
+        required=True,
+        help='Output path for exported model'
+    )
+    export_parser.add_argument(
+        '--seq-length',
+        type=int,
+        default=128,
+        help='Maximum sequence length for export'
+    )
+    
+    # General arguments
+    parser.add_argument(
+        '--seed',
+        type=int,
+        default=42,
+        help='Random seed for reproducibility'
+    )
+    parser.add_argument(
+        '--log-level',
+        choices=['DEBUG', 'INFO', 'WARNING', 'ERROR'],
+        default='INFO',
+        help='Logging level'
+    )
+    parser.add_argument(
+        '--log-file',
+        type=str,
+        default=None,
+        help='Path to log file'
+    )
+    
+    return parser.parse_args()
+
+
+def load_configuration(config_path: str) -> Dict:
+    """
+    Load configuration from Python file.
+    
+    Args:
+        config_path: Path to configuration file
+        
+    Returns:
+        Configuration dictionary
+    """
+    config_path = Path(config_path)
+    if not config_path.exists():
+        raise FileNotFoundError(f"Configuration file not found: {config_path}")
+    
+    # Import configuration module
+    spec = importlib.util.spec_from_file_location("config", config_path)
+    config_module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(config_module)
