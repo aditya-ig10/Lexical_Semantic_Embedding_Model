@@ -78,3 +78,5 @@ class TestMultiHeadAttention(unittest.TestCase):
         with self.assertRaises(AssertionError):
             MultiHeadAttention(embed_dim=255, num_heads=8)  # Not divisible
 
+
+# fix: mask shape (B,1,1,T) was (B,T) -> attention test failing, fixed
