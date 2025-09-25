@@ -79,4 +79,122 @@ class TestMultiHeadAttention(unittest.TestCase):
             MultiHeadAttention(embed_dim=255, num_heads=8)  # Not divisible
 
 
-# fix: mask shape (B,1,1,T) was (B,T) -> attention test failing, fixed
+class TestPositionalEncoding(unittest.TestCase):
+    """Test cases for PositionalEncoding module."""
+    
+    def setUp(self):
+        """Set up test fixtures."""
+        self.embed_dim = 256
+        self.max_len = 1000
+        self.pos_encoding = PositionalEncoding(self.embed_dim, self.max_len)
+    
+    def test_positional_encoding_shape(self):
+        """Test positional encoding output shape."""
+        seq_len = 50
+        batch_size = 4
+        
+        x = torch.randn(seq_len, batch_size, self.embed_dim)
+        output = self.pos_encoding(x)
+        
+        self.assertEqual(output.shape, x.shape)
+    
+    def test_positional_encoding_deterministic(self):
+        """Test that positional encoding is deterministic."""
+        seq_len = 30
+        batch_size = 2
+        
+        x = torch.randn(seq_len, batch_size, self.embed_dim)
+        output1 = self.pos_encoding(x)
+        output2 = self.pos_encoding(x)
+        
+        torch.testing.assert_close(output1, output2)
+
+
+class TestBiLSTMEncoder(unittest.TestCase):
+    """Test cases for BiLSTMEncoder module."""
+    
+    def setUp(self):
+        """Set up test fixtures."""
+        self.vocab_size = 1000
+        self.embed_dim = 128
+        self.hidden_dim = 256
+        self.num_layers = 2
+        self.batch_size = 4
+        self.seq_len = 32
+        
+        self.encoder = BiLSTMEncoder(
+            vocab_size=self.vocab_size,
+            embed_dim=self.embed_dim,
+            hidden_dim=self.hidden_dim,
+            num_layers=self.num_layers,
+            dropout=0.1,
+            bidirectional=True,
+            use_attention=True
+        )
+    
+    def test_encoder_initialization(self):
+        """Test encoder initialization."""
+        self.assertEqual(self.encoder.vocab_size, self.vocab_size)
+        self.assertEqual(self.encoder.embed_dim, self.embed_dim)
+        self.assertEqual(self.encoder.hidden_dim, self.hidden_dim)
+        self.assertTrue(self.encoder.bidirectional)
+        self.assertTrue(self.encoder.use_attention)
+    
+    def test_encoder_forward_pass(self):
+        """Test encoder forward pass."""
+        input_ids = torch.randint(1, self.vocab_size, (self.batch_size, self.seq_len))
+        attention_mask = torch.ones(self.batch_size, self.seq_len)
+        
+        outputs = self.encoder(input_ids, attention_mask)
+        
+        self.assertIn('last_hidden_state', outputs)
+        self.assertIn('pooler_output', outputs)
+        
+        # Check shapes
+        self.assertEqual(
+            outputs['last_hidden_state'].shape,
+            (self.batch_size, self.seq_len, self.embed_dim)
+        )
+        self.assertEqual(
+            outputs['pooler_output'].shape,
+            (self.batch_size, self.embed_dim)
+        )
+    
+    def test_encoder_without_attention(self):
+        """Test encoder without attention mechanism."""
+        encoder = BiLSTMEncoder(
+            vocab_size=self.vocab_size,
+            embed_dim=self.embed_dim,
+            hidden_dim=self.hidden_dim,
+            num_layers=self.num_layers,
+            use_attention=False
+        )
+        
+        input_ids = torch.randint(1, self.vocab_size, (self.batch_size, self.seq_len))
+        outputs = encoder(input_ids)
+        
+        self.assertIn('last_hidden_state', outputs)
+        self.assertIn('pooler_output', outputs)
+    
+    def test_encoder_with_pretrained_embeddings(self):
+        """Test encoder with pretrained embeddings."""
+        pretrained_embeddings = torch.randn(self.vocab_size, self.embed_dim)
+        
+        encoder = BiLSTMEncoder(
+            vocab_size=self.vocab_size,
+            embed_dim=self.embed_dim,
+            hidden_dim=self.hidden_dim,
+            num_layers=self.num_layers,
+            pretrained_embeddings=pretrained_embeddings,
+            freeze_embeddings=True
+        )
+        
+        # Check that embeddings are frozen
+        self.assertFalse(encoder.embedding.weight.requires_grad)
+        
+        # Check that embeddings match
+        torch.testing.assert_close(
+            encoder.embedding.weight, 
+            pretrained_embeddings
+        )
+
