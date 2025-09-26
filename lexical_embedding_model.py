@@ -663,3 +663,4 @@ if __name__ == "__main__":
     print(f"Sentence embedding shape: {sentence_embedding.shape}")
 
 # fix: correct attention scale by sqrt(head_dim), was sqrt(embed_dim)
+# fix: BiLSTM hidden*2 projection when bidirectional=True
