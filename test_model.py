@@ -198,3 +198,4 @@ class TestBiLSTMEncoder(unittest.TestCase):
             pretrained_embeddings
         )
 
+# all encoder tests green (7/7)
