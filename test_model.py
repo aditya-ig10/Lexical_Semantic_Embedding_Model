@@ -198,4 +198,151 @@ class TestBiLSTMEncoder(unittest.TestCase):
             pretrained_embeddings
         )
 
-# all encoder tests green (7/7)
+
+class TestLexicalSemanticEmbeddingModel(unittest.TestCase):
+    """Test cases for the complete LexicalSemanticEmbeddingModel."""
+    
+    def setUp(self):
+        """Set up test fixtures."""
+        self.vocab_size = 1000
+        self.embed_dim = 128
+        self.hidden_dim = 256
+        self.batch_size = 4
+        self.seq_len = 32
+        
+        self.model = LexicalSemanticEmbeddingModel(
+            vocab_size=self.vocab_size,
+            embed_dim=self.embed_dim,
+            hidden_dim=self.hidden_dim,
+            num_layers=2,
+            similarity_function='cosine'
+        )
+    
+    def test_model_initialization(self):
+        """Test model initialization."""
+        self.assertEqual(self.model.similarity_function, 'cosine')
+        self.assertEqual(self.model.output_dim, 1)
+        self.assertIsInstance(self.model.encoder, BiLSTMEncoder)
+    
+    def test_model_forward_pass(self):
+        """Test complete model forward pass."""
+        input_ids_1 = torch.randint(1, self.vocab_size, (self.batch_size, self.seq_len))
+        input_ids_2 = torch.randint(1, self.vocab_size, (self.batch_size, self.seq_len))
+        attention_mask_1 = torch.ones(self.batch_size, self.seq_len)
+        attention_mask_2 = torch.ones(self.batch_size, self.seq_len)
+        
+        outputs = self.model(
+            input_ids_1=input_ids_1,
+            input_ids_2=input_ids_2,
+            attention_mask_1=attention_mask_1,
+            attention_mask_2=attention_mask_2
+        )
+        
+        self.assertIn('similarity', outputs)
+        self.assertIn('embedding1', outputs)
+        self.assertIn('embedding2', outputs)
+        
+        # Check shapes
+        self.assertEqual(outputs['similarity'].shape, (self.batch_size,))
+        self.assertEqual(outputs['embedding1'].shape, (self.batch_size, self.embed_dim))
+        self.assertEqual(outputs['embedding2'].shape, (self.batch_size, self.embed_dim))
+        
+        # Check similarity scores are reasonable
+        similarities = outputs['similarity']
+        self.assertFalse(torch.isnan(similarities).any())
+        self.assertFalse(torch.isinf(similarities).any())
+    
+    def test_different_similarity_functions(self):
+        """Test different similarity functions."""
+        similarity_functions = ['cosine', 'euclidean', 'manhattan', 'learned']
+        
+        for sim_func in similarity_functions:
+            with self.subTest(similarity_function=sim_func):
+                model = LexicalSemanticEmbeddingModel(
+                    vocab_size=self.vocab_size,
+                    embed_dim=self.embed_dim,
+                    hidden_dim=self.hidden_dim,
+                    similarity_function=sim_func
+                )
+                
+                input_ids_1 = torch.randint(1, self.vocab_size, (2, 16))
+                input_ids_2 = torch.randint(1, self.vocab_size, (2, 16))
+                
+                outputs = model(input_ids_1, input_ids_2)
+                
+                self.assertEqual(outputs['similarity'].shape, (2,))
+                self.assertFalse(torch.isnan(outputs['similarity']).any())
+    
+    def test_sentence_embedding(self):
+        """Test single sentence embedding."""
+        input_ids = torch.randint(1, self.vocab_size, (self.batch_size, self.seq_len))
+        attention_mask = torch.ones(self.batch_size, self.seq_len)
+        
+        embedding = self.model.get_sentence_embedding(input_ids, attention_mask)
+        
+        self.assertEqual(embedding.shape, (self.batch_size, self.embed_dim))
+        self.assertFalse(torch.isnan(embedding).any())
+    
+    def test_model_save_and_load(self):
+        """Test model saving and loading."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            save_path = Path(temp_dir) / "test_model"
+            
+            # Save model
+            self.model.save_model(save_path)
+            
+            # Check files exist
+            self.assertTrue((save_path / "model.pt").exists())
+            self.assertTrue((save_path / "config.json").exists())
+            
+            # Load model
+            loaded_model = LexicalSemanticEmbeddingModel.load_model(save_path)
+            
+            # Test that loaded model works
+            input_ids = torch.randint(1, self.vocab_size, (2, 16))
+            
+            original_output = self.model.get_sentence_embedding(input_ids)
+            loaded_output = loaded_model.get_sentence_embedding(input_ids)
+            
+            torch.testing.assert_close(original_output, loaded_output)
+    
+    def test_model_export_onnx(self):
+        """Test ONNX export functionality."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            export_path = Path(temp_dir) / "model.onnx"
+            
+            example_input = {
+                'input_ids_1': torch.randint(1, self.vocab_size, (1, 16)),
+                'input_ids_2': torch.randint(1, self.vocab_size, (1, 16)),
+                'attention_mask_1': torch.ones(1, 16),
+                'attention_mask_2': torch.ones(1, 16)
+            }
+            
+            # Export to ONNX
+            self.model.export_to_onnx(export_path, example_input)
+            
+            # Check file exists
+            self.assertTrue(export_path.exists())
+    
+    def test_compute_similarity_edge_cases(self):
+        """Test similarity computation edge cases."""
+        # Test identical embeddings
+        embedding = torch.randn(2, self.embed_dim)
+        similarity = self.model.compute_similarity(embedding, embedding)
+        
+        # For cosine similarity with identical vectors, should be high
+        self.assertGreater(similarity.mean().item(), 0.5)
+        
+        # Test orthogonal embeddings
+        embedding1 = torch.zeros(2, self.embed_dim)
+        embedding1[:, :self.embed_dim//2] = 1.0
+        
+        embedding2 = torch.zeros(2, self.embed_dim)
+        embedding2[:, self.embed_dim//2:] = 1.0
+        
+        similarity = self.model.compute_similarity(embedding1, embedding2)
+        
+        # Should be close to 0 for orthogonal vectors
+        self.assertLess(abs(similarity.mean().item()), 0.5)
+
+
