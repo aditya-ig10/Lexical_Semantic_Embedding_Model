@@ -664,3 +664,4 @@ if __name__ == "__main__":
 
 # fix: correct attention scale by sqrt(head_dim), was sqrt(embed_dim)
 # fix: BiLSTM hidden*2 projection when bidirectional=True
+# fix: clamp cosine eps=1e-8, fixes NaN on zero-norm vectors
