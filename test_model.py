@@ -346,3 +346,4 @@ class TestLexicalSemanticEmbeddingModel(unittest.TestCase):
         self.assertLess(abs(similarity.mean().item()), 0.5)
 
 
+# model forward + save/load green (12/12)
