@@ -128,3 +128,5 @@ class ModelEvaluator:
                 # Forward pass
                 outputs = self.model(
                     input_ids_1=batch_inputs1['input_ids'],
+
+# fix: spearman nan when constant preds -> fallback to 0.0
