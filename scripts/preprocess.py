@@ -120,3 +120,5 @@ class TextPreprocessor:
             
 
 # fix: strip unicode punctuation, handle empty strings -> [UNK]
+
+# update: normalize contractions, lowercase pipeline
