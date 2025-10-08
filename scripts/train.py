@@ -378,3 +378,5 @@ class ModelTrainer:
                 )
             
             self.global_step += 1
+
+# fix: checkpoint save uses state_dict, load with map_location
