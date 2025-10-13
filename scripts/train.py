@@ -382,3 +382,5 @@ class ModelTrainer:
 # fix: checkpoint save uses state_dict, load with map_location
 
 # fix: grad-clip 1.0, fixes loss NaN at epoch 2
+
+# run STS-sample: loss 0.42 -> 0.18 over 5 epochs
