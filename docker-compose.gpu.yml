@@ -1,0 +1,218 @@
+# Docker Compose for Lexical Semantic Embedding Model (GPU Version)
+version: '3.8'
+
+services:
+  # Main application service with GPU support
+  lexical-model-gpu:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: gpu
+    container_name: lexical-embedding-model-gpu
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+      - PYTHONPATH=/app
+      - LOG_LEVEL=INFO
+      - MODEL_DEVICE=cuda
+      - CUDA_VISIBLE_DEVICES=0
+    volumes:
+      - ./data:/app/data
+      - ./models:/app/models
+      - ./logs:/app/logs
+      - ./evaluation_results:/app/evaluation_results
+      - ./config:/app/config
+    command: ["python", "main.py", "--help"]
+    networks:
+      - lexical-network-gpu
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+  # Development service with Jupyter and GPU
+  lexical-dev-gpu:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: gpu
+    container_name: lexical-embedding-dev-gpu
+    runtime: nvidia
+    ports:
+      - "8888:8888"
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+      - PYTHONPATH=/app
+      - LOG_LEVEL=DEBUG
+      - JUPYTER_ENABLE_LAB=yes
+      - MODEL_DEVICE=cuda
+      - CUDA_VISIBLE_DEVICES=0
+    volumes:
+      - .:/app
+      - ./data:/app/data
+      - ./models:/app/models
+      - ./logs:/app/logs
+      - ./evaluation_results:/app/evaluation_results
+    # Install additional packages for GPU development
+    command: >
+      bash -c "
+      pip install --user jupyter ipykernel black flake8 pytest pytest-cov mypy &&
+      jupyter lab --ip=0.0.0.0 --port=8888 --no-browser --allow-root --NotebookApp.token='' --NotebookApp.password=''
+      "
+    networks:
+      - lexical-network-gpu
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+  # Training service with GPU acceleration
+  lexical-train-gpu:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: gpu
+    container_name: lexical-embedding-train-gpu
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+      - PYTHONPATH=/app
+      - LOG_LEVEL=INFO
+      - MODEL_DEVICE=cuda
+      - CUDA_VISIBLE_DEVICES=0
+    volumes:
+      - ./data:/app/data
+      - ./models:/app/models
+      - ./logs:/app/logs
+      - ./config:/app/config
+    command: ["python", "scripts/train.py", "--config", "config/train_config.py", "--model-config", "large", "--device", "cuda"]
+    depends_on:
+      - lexical-model-gpu
+    networks:
+      - lexical-network-gpu
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+  # Evaluation service with GPU
+  lexical-eval-gpu:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: gpu
+    container_name: lexical-embedding-eval-gpu
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+      - PYTHONPATH=/app
+      - LOG_LEVEL=INFO
+      - MODEL_DEVICE=cuda
+      - CUDA_VISIBLE_DEVICES=0
+    volumes:
+      - ./data:/app/data
+      - ./models:/app/models
+      - ./evaluation_results:/app/evaluation_results
+      - ./logs:/app/logs
+    command: ["python", "scripts/evaluate.py", "--model-path", "models/best_model.pt", "--datasets", "sts-benchmark", "sick", "--create-plots"]
+    depends_on:
+      - lexical-model-gpu
+    networks:
+      - lexical-network-gpu
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+  # Multi-GPU training service (for large models)
+  lexical-train-multi-gpu:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: gpu
+    container_name: lexical-embedding-train-multi-gpu
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+      - PYTHONPATH=/app
+      - LOG_LEVEL=INFO
+      - MODEL_DEVICE=cuda
+      - CUDA_VISIBLE_DEVICES=0,1
+    volumes:
+      - ./data:/app/data
+      - ./models:/app/models
+      - ./logs:/app/logs
+      - ./config:/app/config
+    command: ["python", "-m", "torch.distributed.launch", "--nproc_per_node=2", "scripts/train.py", "--config", "config/train_config.py", "--model-config", "bert-like", "--distributed"]
+    depends_on:
+      - lexical-model-gpu
+    networks:
+      - lexical-network-gpu
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 2
+              capabilities: [gpu]
+
+  # TensorBoard service for monitoring
+  tensorboard:
+    image: tensorflow/tensorflow:latest
+    container_name: lexical-tensorboard
+    ports:
+      - "6006:6006"
+    volumes:
+      - ./logs:/logs
+    command: ["tensorboard", "--logdir=/logs", "--host=0.0.0.0", "--port=6006"]
+    networks:
+      - lexical-network-gpu
+
+  # MLflow tracking server (optional)
+  mlflow:
+    image: python:3.11-slim
+    container_name: lexical-mlflow
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./mlruns:/mlruns
+    command: >
+      bash -c "
+      pip install mlflow &&
+      mlflow server --host 0.0.0.0 --port 5000 --backend-store-uri file:///mlruns
+      "
+    networks:
+      - lexical-network-gpu
+
+networks:
+  lexical-network-gpu:
+    driver: bridge
+
+volumes:
+  data:
+    driver: local
+  models:
+    driver: local
+  logs:
+    driver: local
+  evaluation_results:
+    driver: local
+  mlruns:
+    driver: local
