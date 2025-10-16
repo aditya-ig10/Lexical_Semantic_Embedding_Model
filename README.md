@@ -68,3 +68,93 @@ lexical_embedding_project/
 ├── logs/                          # Training logs
 └── evaluation_results/           # Evaluation outputs
 ```
+
+## 🚀 Quick Start
+
+### Option 1: Using Docker (Recommended)
+
+1. **Clone the repository**:
+```bash
+git clone <repository-url>
+cd lexical_embedding_project
+```
+
+2. **CPU Setup**:
+```bash
+# Build and run with Docker Compose
+docker-compose up lexical-dev
+
+# Access Jupyter Lab at http://localhost:8888
+```
+
+3. **GPU Setup** (requires NVIDIA Docker):
+```bash
+# Build and run with GPU support
+docker-compose -f docker-compose.gpu.yml up lexical-dev-gpu
+
+# Access Jupyter Lab at http://localhost:8888
+```
+
+### Option 2: Local Installation
+
+1. **Create virtual environment**:
+```bash
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+```
+
+2. **Install dependencies**:
+```bash
+pip install -r requirements.txt
+```
+
+3. **Download datasets**:
+```bash
+python scripts/data_download.py --datasets all --output-dir data/raw
+```
+
+4. **Preprocess data**:
+```bash
+python scripts/preprocess.py --datasets sts-benchmark sick quora mrpc
+```
+
+5. **Train model**:
+```bash
+python scripts/train.py --config config/train_config.py --model-config medium
+```
+
+6. **Evaluate model**:
+```bash
+python scripts/evaluate.py --model-path models/best_model.pt --datasets sts-benchmark sick
+```
+
+## 📊 Usage Examples
+
+### Command Line Interface
+
+```bash
+# Train a model
+python main.py train --model-config large --epochs 50 --batch-size 64
+
+# Evaluate a trained model
+python main.py evaluate --model-path models/best_model.pt --datasets all
+
+# Make predictions
+python main.py infer --model-path models/best_model.pt \
+  --sentence1 "The cat sat on the mat" \
+  --sentence2 "A feline rested on the rug"
+
+# Prepare data
+python main.py prepare-data --datasets sts-benchmark sick --output-dir data/processed
+```
+
+### Python API
+
+```python
+from lexical_embedding_model import LexicalSemanticEmbeddingModel
+from config.model_config import ModelConfig
+
+# Load model
+config = ModelConfig.get_config("medium")
+model = LexicalSemanticEmbeddingModel(config)
+
