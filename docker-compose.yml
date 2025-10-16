@@ -1,0 +1,140 @@
+# Docker Compose for Lexical Semantic Embedding Model (CPU Version)
+version: '3.8'
+
+services:
+  # Main application service
+  lexical-model:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    container_name: lexical-embedding-model
+    volumes:
+      - ./data:/app/data
+      - ./models:/app/models
+      - ./logs:/app/logs
+      - ./evaluation_results:/app/evaluation_results
+      - ./config:/app/config
+    environment:
+      - PYTHONPATH=/app
+      - LOG_LEVEL=INFO
+      - MODEL_DEVICE=cpu
+    command: ["python", "main.py", "--help"]
+    networks:
+      - lexical-network
+
+  # Development service with Jupyter
+  lexical-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: development
+    container_name: lexical-embedding-dev
+    ports:
+      - "8888:8888"
+    volumes:
+      - .:/app
+      - ./data:/app/data
+      - ./models:/app/models
+      - ./logs:/app/logs
+      - ./evaluation_results:/app/evaluation_results
+    environment:
+      - PYTHONPATH=/app
+      - LOG_LEVEL=DEBUG
+      - JUPYTER_ENABLE_LAB=yes
+    command: ["jupyter", "lab", "--ip=0.0.0.0", "--port=8888", "--no-browser", "--allow-root", "--NotebookApp.token=''", "--NotebookApp.password=''"]
+    networks:
+      - lexical-network
+
+  # Training service
+  lexical-train:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    container_name: lexical-embedding-train
+    volumes:
+      - ./data:/app/data
+      - ./models:/app/models
+      - ./logs:/app/logs
+      - ./config:/app/config
+    environment:
+      - PYTHONPATH=/app
+      - LOG_LEVEL=INFO
+      - MODEL_DEVICE=cpu
+      - CUDA_VISIBLE_DEVICES=""
+    command: ["python", "scripts/train.py", "--config", "config/train_config.py", "--model-config", "medium"]
+    depends_on:
+      - lexical-model
+    networks:
+      - lexical-network
+
+  # Evaluation service
+  lexical-eval:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    container_name: lexical-embedding-eval
+    volumes:
+      - ./data:/app/data
+      - ./models:/app/models
+      - ./evaluation_results:/app/evaluation_results
+      - ./logs:/app/logs
+    environment:
+      - PYTHONPATH=/app
+      - LOG_LEVEL=INFO
+      - MODEL_DEVICE=cpu
+    command: ["python", "scripts/evaluate.py", "--model-path", "models/best_model.pt", "--datasets", "sts-benchmark", "sick"]
+    depends_on:
+      - lexical-model
+    networks:
+      - lexical-network
+
+  # Data preprocessing service
+  lexical-preprocess:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    container_name: lexical-embedding-preprocess
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs
+    environment:
+      - PYTHONPATH=/app
+      - LOG_LEVEL=INFO
+    command: ["python", "scripts/preprocess.py", "--datasets", "sts-benchmark", "sick", "quora", "mrpc"]
+    networks:
+      - lexical-network
+
+  # Data download service
+  lexical-download:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    container_name: lexical-embedding-download
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs
+    environment:
+      - PYTHONPATH=/app
+      - LOG_LEVEL=INFO
+    command: ["python", "scripts/data_download.py", "--datasets", "all", "--output-dir", "data/raw"]
+    networks:
+      - lexical-network
+
+networks:
+  lexical-network:
+    driver: bridge
+
+volumes:
+  data:
+    driver: local
+  models:
+    driver: local
+  logs:
+    driver: local
+  evaluation_results:
+    driver: local
