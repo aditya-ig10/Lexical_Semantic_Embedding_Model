@@ -118,3 +118,5 @@ class SimpleSemanticModel:
 # 2. DATA LOADING AND PREPARATION
 # =====================================
 
+
+# fix: inference device fallback cpu when cuda unavailable
