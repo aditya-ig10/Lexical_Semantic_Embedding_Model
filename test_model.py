@@ -346,4 +346,78 @@ class TestLexicalSemanticEmbeddingModel(unittest.TestCase):
         self.assertLess(abs(similarity.mean().item()), 0.5)
 
 
-# model forward + save/load green (12/12)
+class TestUtilityFunctions(unittest.TestCase):
+    """Test utility functions."""
+    
+    def test_create_model_from_config(self):
+        """Test model creation from configuration."""
+        config = {
+            'vocab_size': 1000,
+            'embed_dim': 128,
+            'hidden_dim': 256,
+            'num_layers': 2,
+            'similarity_function': 'learned'
+        }
+        
+        model = create_model_from_config(config)
+        
+        self.assertIsInstance(model, LexicalSemanticEmbeddingModel)
+        self.assertEqual(model.encoder.vocab_size, 1000)
+        self.assertEqual(model.similarity_function, 'learned')
+
+
+class TestModelTraining(unittest.TestCase):
+    """Test model training capabilities."""
+    
+    def setUp(self):
+        """Set up training test fixtures."""
+        self.model = LexicalSemanticEmbeddingModel(
+            vocab_size=1000,
+            embed_dim=64,  # Smaller for faster testing
+            hidden_dim=128,
+            num_layers=1
+        )
+        
+        self.optimizer = torch.optim.Adam(self.model.parameters(), lr=0.001)
+        self.criterion = nn.MSELoss()
+    
+    def test_model_training_step(self):
+        """Test a single training step."""
+        # Create dummy data
+        batch_size = 4
+        seq_len = 16
+        
+        input_ids_1 = torch.randint(1, 1000, (batch_size, seq_len))
+        input_ids_2 = torch.randint(1, 1000, (batch_size, seq_len))
+        targets = torch.rand(batch_size)  # Random similarity scores
+        
+        # Forward pass
+        outputs = self.model(input_ids_1, input_ids_2)
+        loss = self.criterion(outputs['similarity'], targets)
+        
+        # Backward pass
+        self.optimizer.zero_grad()
+        loss.backward()
+        self.optimizer.step()
+        
+        # Check that loss is computed correctly
+        self.assertFalse(torch.isnan(loss))
+        self.assertGreater(loss.item(), 0)
+    
+    def test_gradient_flow(self):
+        """Test that gradients flow through the model."""
+        input_ids_1 = torch.randint(1, 1000, (2, 8))
+        input_ids_2 = torch.randint(1, 1000, (2, 8))
+        targets = torch.rand(2)
+        
+        outputs = self.model(input_ids_1, input_ids_2)
+        loss = self.criterion(outputs['similarity'], targets)
+        loss.backward()
+        
+        # Check that gradients exist
+        for name, param in self.model.named_parameters():
+            if param.requires_grad:
+                self.assertIsNotNone(param.grad, f"No gradient for {name}")
+                self.assertFalse(torch.isnan(param.grad).any(), f"NaN gradient for {name}")
+
+
