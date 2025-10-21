@@ -421,3 +421,5 @@ class TestModelTraining(unittest.TestCase):
                 self.assertFalse(torch.isnan(param.grad).any(), f"NaN gradient for {name}")
 
 
+
+# fix: tmp_path for tokenizer cache, was hardcoded /data
