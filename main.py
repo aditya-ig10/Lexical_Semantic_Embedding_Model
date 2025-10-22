@@ -398,3 +398,103 @@ def evaluate_model(args: argparse.Namespace) -> None:
 
 
 def prepare_data(args: argparse.Namespace) -> None:
+    """
+    Download and prepare datasets.
+    
+    Args:
+        args: Command line arguments
+    """
+    logger.info("Starting data preparation...")
+    
+    # Load data configuration
+    try:
+        data_config = DataConfig()
+    except Exception as e:
+        logger.error(f"Error loading data configuration: {e}")
+        sys.exit(1)
+    
+    # Create output directory
+    output_dir = Path(args.output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    
+    # Initialize data downloader
+    downloader = DataDownloader(data_config, output_dir)
+    
+    # Download datasets
+    for dataset in args.datasets:
+        logger.info(f"Downloading {dataset}...")
+        try:
+            downloader.download_dataset(dataset, force=args.force)
+        except Exception as e:
+            logger.error(f"Error downloading {dataset}: {e}")
+    
+    # Initialize preprocessor
+    preprocessor = DataPreprocessor(data_config, output_dir)
+    
+    # Preprocess datasets
+    for dataset in args.datasets:
+        logger.info(f"Preprocessing {dataset}...")
+        try:
+            preprocessor.preprocess_dataset(dataset, force=args.force)
+        except Exception as e:
+            logger.error(f"Error preprocessing {dataset}: {e}")
+    
+    logger.info("Data preparation completed!")
+
+
+def run_inference(args: argparse.Namespace) -> None:
+    """
+    Run inference on text pairs.
+    
+    Args:
+        args: Command line arguments
+    """
+    logger.info("Running inference...")
+    
+    # Set device
+    device = get_device()
+    
+    # Load model
+    try:
+        model = LexicalSemanticEmbeddingModel.load_model(args.model_path, device)
+        model.eval()
+        logger.info(f"Model loaded from {args.model_path}")
+    except Exception as e:
+        logger.error(f"Error loading model: {e}")
+        sys.exit(1)
+    
+    # Load tokenizer (implement based on your tokenizer)
+    # For now, using simple whitespace tokenization
+    def simple_tokenize(text: str, max_length: int = 128) -> Dict[str, torch.Tensor]:
+        """Simple tokenization for demonstration."""
+        tokens = text.lower().split()[:max_length-2]  # Reserve space for special tokens
+        # Add special tokens (assuming 1=CLS, 2=SEP, 0=PAD)
+        token_ids = [1] + [hash(token) % 30000 + 3 for token in tokens] + [2]
+        
+        # Pad to max_length
+        while len(token_ids) < max_length:
+            token_ids.append(0)
+        
+        attention_mask = [1 if tid != 0 else 0 for tid in token_ids]
+        
+        return {
+            'input_ids': torch.tensor([token_ids]),
+            'attention_mask': torch.tensor([attention_mask])
+        }
+    
+    # Tokenize input texts
+    tokens1 = simple_tokenize(args.text1)
+    tokens2 = simple_tokenize(args.text2)
+    
+    # Move to device
+    for key in tokens1:
+        tokens1[key] = tokens1[key].to(device)
+        tokens2[key] = tokens2[key].to(device)
+    
+    # Run inference
+    with torch.no_grad():
+        outputs = model(
+            input_ids_1=tokens1['input_ids'],
+            input_ids_2=tokens2['input_ids'],
+            attention_mask_1=tokens1['attention_mask'],
+            attention_mask_2=tokens2['attention_mask']
