@@ -298,3 +298,239 @@ class TrainingConfig:
         """
         return {
             "patience": self.early_stopping_patience,
+            "metric": self.early_stopping_metric,
+            "mode": self.early_stopping_mode,
+            "delta": self.early_stopping_delta
+        }
+    
+    def get_wandb_config(self) -> Dict[str, Any]:
+        """
+        Get Weights & Biases configuration.
+        
+        Returns:
+            Wandb configuration dictionary
+        """
+        return {
+            "project": self.wandb_project,
+            "entity": self.wandb_entity,
+            "name": self.wandb_run_name,
+            "tags": self.wandb_tags,
+            "notes": self.wandb_notes
+        }
+    
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert configuration to dictionary."""
+        return {
+            field.name: getattr(self, field.name)
+            for field in self.__dataclass_fields__.values()
+        }
+    
+    @classmethod
+    def from_dict(cls, config_dict: Dict[str, Any]) -> 'TrainingConfig':
+        """Create configuration from dictionary."""
+        return cls(**config_dict)
+    
+    def save(self, path: str) -> None:
+        """Save configuration to JSON file."""
+        import json
+        with open(path, 'w') as f:
+            json.dump(self.to_dict(), f, indent=2)
+    
+    @classmethod
+    def load(cls, path: str) -> 'TrainingConfig':
+        """Load configuration from JSON file."""
+        import json
+        with open(path, 'r') as f:
+            config_dict = json.load(f)
+        return cls.from_dict(config_dict)
+
+
+# Predefined training configurations
+@dataclass
+class FastTrainingConfig(TrainingConfig):
+    """Fast training configuration for development and testing."""
+    num_epochs: int = 10
+    learning_rate: float = 5e-4
+    warmup_steps: int = 100
+    logging_steps: int = 10
+    eval_steps: int = 50
+    save_steps: int = 100
+    early_stopping_patience: int = 3
+    use_wandb: bool = False
+
+
+@dataclass
+class StandardTrainingConfig(TrainingConfig):
+    """Standard training configuration for regular training."""
+    num_epochs: int = 50
+    learning_rate: float = 2e-4
+    warmup_steps: int = 1000
+    lr_scheduler: str = "cosine"
+    use_early_stopping: bool = True
+    early_stopping_patience: int = 7
+    use_wandb: bool = True
+
+
+@dataclass
+class IntensiveTrainingConfig(TrainingConfig):
+    """Intensive training configuration for best performance."""
+    num_epochs: int = 200
+    learning_rate: float = 1e-4
+    warmup_steps: int = 2000
+    lr_scheduler: str = "cosine"
+    use_early_stopping: bool = True
+    early_stopping_patience: int = 15
+    gradient_accumulation_steps: int = 2
+    use_model_averaging: bool = True
+    averaging_start_epoch: int = 100
+    use_wandb: bool = True
+
+
+@dataclass
+class HyperparameterSearchConfig(TrainingConfig):
+    """Configuration for hyperparameter search."""
+    num_epochs: int = 20  # Shorter for search
+    use_hyperparameter_search: bool = True
+    num_trials: int = 50
+    search_space: Dict[str, Any] = field(default_factory=lambda: {
+        "learning_rate": {"type": "loguniform", "low": 1e-5, "high": 1e-2},
+        "weight_decay": {"type": "loguniform", "low": 1e-6, "high": 1e-2},
+        "dropout": {"type": "uniform", "low": 0.1, "high": 0.5},
+        "hidden_dim": {"type": "choice", "choices": [256, 512, 768, 1024]},
+        "num_attention_heads": {"type": "choice", "choices": [4, 8, 12, 16]}
+    })
+
+
+# Training configuration factory
+def get_training_config(config_name: str = "standard") -> TrainingConfig:
+    """
+    Get predefined training configuration.
+    
+    Args:
+        config_name: Name of the configuration
+        
+    Returns:
+        Training configuration instance
+    """
+    configs = {
+        "fast": FastTrainingConfig,
+        "standard": StandardTrainingConfig,
+        "intensive": IntensiveTrainingConfig,
+        "search": HyperparameterSearchConfig
+    }
+    
+    if config_name not in configs:
+        available_configs = list(configs.keys())
+        raise ValueError(f"Unknown config name: {config_name}. Available: {available_configs}")
+    
+    return configs[config_name]()
+
+
+def create_custom_training_config(**kwargs) -> TrainingConfig:
+    """
+    Create custom training configuration.
+    
+    Args:
+        **kwargs: Configuration parameters to override
+        
+    Returns:
+        Custom training configuration
+    """
+    base_config = StandardTrainingConfig()
+    
+    # Update configuration with provided parameters
+    for key, value in kwargs.items():
+        if hasattr(base_config, key):
+            setattr(base_config, key, value)
+        else:
+            raise ValueError(f"Unknown configuration parameter: {key}")
+    
+    return base_config
+
+
+# Loss function configurations
+LOSS_CONFIGS = {
+    "similarity": {
+        "mse": {"loss_type": "mse"},
+        "mae": {"loss_type": "mae"},
+        "huber": {"loss_type": "huber", "delta": 1.0},
+        "cosine": {"loss_type": "cosine_embedding", "margin": 0.5},
+        "ranking": {"loss_type": "ranking", "margin": 0.5}
+    }
+}
+
+# Optimizer configurations
+OPTIMIZER_CONFIGS = {
+    "adam": {
+        "lr": 2e-4,
+        "betas": (0.9, 0.999),
+        "eps": 1e-8,
+        "weight_decay": 1e-4
+    },
+    "adamw": {
+        "lr": 2e-4,
+        "betas": (0.9, 0.999),
+        "eps": 1e-8,
+        "weight_decay": 1e-2
+    },
+    "sgd": {
+        "lr": 1e-2,
+        "momentum": 0.9,
+        "weight_decay": 1e-4
+    },
+    "rmsprop": {
+        "lr": 1e-3,
+        "alpha": 0.99,
+        "eps": 1e-8,
+        "weight_decay": 1e-4
+    }
+}
+
+
+def get_config() -> TrainingConfig:
+    """Get default training configuration."""
+    return StandardTrainingConfig()
+
+
+if __name__ == "__main__":
+    # Example usage and testing
+    print("Training Configuration Examples:")
+    print("=" * 50)
+    
+    # Default configuration
+    config = get_training_config("standard")
+    print(f"Standard config - Epochs: {config.num_epochs}, LR: {config.learning_rate}")
+    
+    # Fast configuration for development
+    fast_config = get_training_config("fast")
+    print(f"Fast config - Epochs: {fast_config.num_epochs}, LR: {fast_config.learning_rate}")
+    
+    # Intensive configuration
+    intensive_config = get_training_config("intensive")
+    print(f"Intensive config - Epochs: {intensive_config.num_epochs}, Model averaging: {intensive_config.use_model_averaging}")
+    
+    # Custom configuration
+    custom_config = create_custom_training_config(
+        num_epochs=75,
+        learning_rate=1e-3,
+        use_curriculum_learning=True
+    )
+    print(f"Custom config - Epochs: {custom_config.num_epochs}, Curriculum: {custom_config.use_curriculum_learning}")
+    
+    # Test configuration methods
+    optimizer_config = config.get_optimizer_config()
+    print(f"Optimizer config: {optimizer_config}")
+    
+    scheduler_config = config.get_scheduler_config(total_steps=10000)
+    print(f"Scheduler config: {scheduler_config}")
+    
+    loss_config = config.get_loss_config()
+    print(f"Loss config: {loss_config}")
+    
+    # Test validation
+    try:
+        invalid_config = TrainingConfig(num_epochs=-1)  # This should raise an error
+    except AssertionError as e:
+        print(f"Validation works: {e}")
+    
+    print("\n✅ All training configuration examples completed successfully!")
