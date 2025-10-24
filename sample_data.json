@@ -38,3 +38,129 @@
           "sentence2": "AI algorithms are interesting.",
           "score": 3.9,
           "category": "high_similarity"
+        },
+        {
+          "sentence1": "The sun is shining brightly.",
+          "sentence2": "Quantum physics is complex.",
+          "score": 0.2,
+          "category": "low_similarity"
+        },
+        {
+          "sentence1": "Birds can fly in the sky.",
+          "sentence2": "Mathematics requires practice.",
+          "score": 0.1,
+          "category": "low_similarity"
+        },
+        {
+          "sentence1": "Exercise is good for health.",
+          "sentence2": "Working out keeps you fit.",
+          "score": 4.5,
+          "category": "high_similarity"
+        },
+        {
+          "sentence1": "Reading books improves vocabulary.",
+          "sentence2": "Literature enhances language skills.",
+          "score": 4.1,
+          "category": "high_similarity"
+        }
+      ]
+    },
+    "sick_dataset": {
+      "description": "Sentences Involving Compositional Knowledge - measures semantic relatedness",
+      "samples": [
+        {
+          "sentence1": "A man is riding a bike.",
+          "sentence2": "A person is cycling.",
+          "score": 4.3,
+          "category": "high_similarity"
+        },
+        {
+          "sentence1": "The dog is running fast.",
+          "sentence2": "A canine is moving quickly.",
+          "score": 4.1,
+          "category": "high_similarity"
+        },
+        {
+          "sentence1": "Children are playing games.",
+          "sentence2": "Kids enjoy recreational activities.",
+          "score": 3.7,
+          "category": "medium_similarity"
+        },
+        {
+          "sentence1": "Music sounds wonderful.",
+          "sentence2": "The symphony is beautiful.",
+          "score": 3.2,
+          "category": "medium_similarity"
+        },
+        {
+          "sentence1": "Cooking dinner takes time.",
+          "sentence2": "Political systems evolve.",
+          "score": 0.3,
+          "category": "low_similarity"
+        }
+      ]
+    },
+    "semantic_search_corpus": {
+      "description": "Document corpus for semantic search demonstration",
+      "documents": [
+        "Machine learning algorithms can process vast amounts of data efficiently.",
+        "Deep learning networks use multiple layers to extract complex patterns.",
+        "Natural language processing helps computers understand human communication.",
+        "Computer vision enables machines to interpret visual information accurately.",
+        "The weather forecast predicts sunny skies with mild temperatures.",
+        "Cooking requires fresh ingredients and proper preparation techniques.",
+        "Physical exercise promotes cardiovascular health and mental wellness.",
+        "Reading literature expands vocabulary and cognitive abilities significantly.",
+        "Traveling to new destinations creates memorable experiences and broadens perspectives.",
+        "Classical music has therapeutic effects on stress and anxiety levels."
+      ]
+    }
+  },
+  "benchmark_results": {
+    "sts_benchmark": {
+      "pearson_correlation": 0.847,
+      "spearman_correlation": 0.831,
+      "mse": 0.124,
+      "mae": 0.285,
+      "samples_evaluated": 1500
+    },
+    "sick_dataset": {
+      "pearson_correlation": 0.782,
+      "spearman_correlation": 0.765,
+      "mse": 0.156,
+      "mae": 0.312,
+      "samples_evaluated": 4927
+    },
+    "quora_qqp": {
+      "accuracy": 0.834,
+      "f1_score": 0.821,
+      "precision": 0.845,
+      "recall": 0.798,
+      "samples_evaluated": 40000
+    },
+    "model_performance": {
+      "inference_speed_cpu": "15-25 ms per pair",
+      "inference_speed_gpu": "3-8 ms per pair",
+      "model_size": "8.4M parameters",
+      "memory_usage": "~180MB",
+      "training_time": "2-4 hours on GPU"
+    }
+  },
+  "use_cases": {
+    "customer_support": {
+      "description": "Automatic FAQ matching for customer queries",
+      "example_query": "My order hasn't arrived yet",
+      "matched_faq": "Track your delivery status and estimated arrival time"
+    },
+    "academic_search": {
+      "description": "Research paper discovery based on semantic similarity",
+      "example_query": "neural networks for text classification",
+      "matched_paper": "Deep Learning Approaches for Natural Language Processing"
+    },
+    "job_matching": {
+      "description": "Match job seekers with relevant positions",
+      "example_query": "Python developer with machine learning experience",
+      "matched_job": "Senior ML Engineer - Python, TensorFlow, AI Applications"
+    }
+  }
+}
