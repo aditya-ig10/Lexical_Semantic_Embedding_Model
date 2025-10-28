@@ -348,5 +348,244 @@ class ModelEvaluator:
         
         Args:
             results: Evaluation results
+            output_dir: Output directory for plots
+        """
+        output_dir = Path(output_dir)
+        output_dir.mkdir(parents=True, exist_ok=True)
+        
+        if MATPLOTLIB_AVAILABLE:
+            self._create_matplotlib_plots(results, output_dir)
+        
+        if PLOTLY_AVAILABLE:
+            self._create_plotly_plots(results, output_dir)
+    
+    def _create_matplotlib_plots(
+        self,
+        results: Dict[str, Any],
+        output_dir: Path
+    ) -> None:
+        """Create matplotlib plots."""
+        plt.style.use('seaborn-v0_8' if hasattr(plt.style, 'seaborn-v0_8') else 'default')
+        
+        # Correlation plot for different datasets
+        if isinstance(results, dict) and all(isinstance(v, dict) for v in results.values()):
+            datasets = list(results.keys())
+            pearson_scores = [results[ds].get('pearson_correlation', 0) for ds in datasets]
+            spearman_scores = [results[ds].get('spearman_correlation', 0) for ds in datasets]
+            
+            fig, ax = plt.subplots(figsize=(10, 6))
+            
+            x = np.arange(len(datasets))
+            width = 0.35
+            
+            ax.bar(x - width/2, pearson_scores, width, label='Pearson', alpha=0.8)
+            ax.bar(x + width/2, spearman_scores, width, label='Spearman', alpha=0.8)
+            
+            ax.set_xlabel('Datasets')
+            ax.set_ylabel('Correlation')
+            ax.set_title('Model Performance Across Datasets')
+            ax.set_xticks(x)
+            ax.set_xticklabels(datasets, rotation=45)
+            ax.legend()
+            ax.grid(True, alpha=0.3)
+            
+            plt.tight_layout()
+            plt.savefig(output_dir / 'correlation_comparison.png', dpi=300, bbox_inches='tight')
+            plt.close()
+        
+        logger.info(f"Matplotlib plots saved to {output_dir}")
+    
+    def _create_plotly_plots(
+        self,
+        results: Dict[str, Any],
+        output_dir: Path
+    ) -> None:
+        """Create interactive Plotly plots."""
+        # Correlation heatmap
+        if isinstance(results, dict) and all(isinstance(v, dict) for v in results.values()):
+            datasets = list(results.keys())
+            metrics = ['pearson_correlation', 'spearman_correlation', 'mse', 'mae']
+            
+            # Create correlation matrix
+            data_matrix = []
+            for metric in metrics:
+                row = [results[ds].get(metric, 0) for ds in datasets]
+                data_matrix.append(row)
+            
+            fig = go.Figure(data=go.Heatmap(
+                z=data_matrix,
+                x=datasets,
+                y=[m.replace('_', ' ').title() for m in metrics],
+                colorscale='Viridis',
+                showscale=True
+            ))
+            
+            fig.update_layout(
+                title='Model Performance Heatmap',
+                xaxis_title='Datasets',
+                yaxis_title='Metrics'
+            )
+            
+            fig.write_html(output_dir / 'performance_heatmap.html')
+        
+        logger.info(f"Plotly plots saved to {output_dir}")
+    
+    def generate_evaluation_report(
+        self,
+        results: Dict[str, Any],
+        output_path: Path
+    ) -> None:
+        """
+        Generate comprehensive evaluation report.
+        
+        Args:
+            results: Evaluation results
+            output_path: Path to save the report
+        """
+        report = {
+            'evaluation_summary': {
+                'timestamp': time.strftime('%Y-%m-%d %H:%M:%S'),
+                'model_type': type(self.model).__name__,
+                'device': str(self.device),
+                'batch_size': self.batch_size
+            },
+            'results': results,
+            'model_info': {
+                'total_parameters': sum(p.numel() for p in self.model.parameters()),
+                'trainable_parameters': sum(p.numel() for p in self.model.parameters() if p.requires_grad)
+            }
+        }
+        
+        # Add summary statistics
+        if results:
+            all_pearson = []
+            all_spearman = []
+            
+            for dataset_results in results.values():
+                if isinstance(dataset_results, dict):
+                    pearson = dataset_results.get('pearson_correlation')
+                    spearman = dataset_results.get('spearman_correlation')
+                    
+                    if pearson is not None:
+                        all_pearson.append(pearson)
+                    if spearman is not None:
+                        all_spearman.append(spearman)
+            
+            if all_pearson:
+                report['summary_statistics'] = {
+                    'avg_pearson': np.mean(all_pearson),
+                    'std_pearson': np.std(all_pearson),
+                    'avg_spearman': np.mean(all_spearman),
+                    'std_spearman': np.std(all_spearman),
+                    'num_datasets': len(all_pearson)
+                }
+        
+        # Save report
+        with open(output_path, 'w') as f:
+            json.dump(report, f, indent=2, default=str)
+        
+        logger.info(f"Evaluation report saved to {output_path}")
+    
+    def semantic_search_demo(
+        self,
+        query: str,
+        candidate_sentences: List[str],
+        top_k: int = 5
+    ) -> List[Tuple[str, float]]:
+        """
+        Demonstrate semantic search capabilities.
+        
+        Args:
+            query: Query sentence
+            candidate_sentences: List of candidate sentences
+            top_k: Number of top results to return
+            
+        Returns:
+            Top-k most similar sentences with scores
+        """
+        logger.info(f"Semantic search for: '{query}'")
+        
+        similarities = self.compute_embedding_similarities(candidate_sentences, query)
+        top_results = similarities[:top_k]
+        
+        print(f"\nTop {top_k} most similar sentences to: '{query}'")
+        print("=" * 60)
+        
+        for i, (sentence, score) in enumerate(top_results, 1):
+            print(f"{i}. [Score: {score:.4f}] {sentence}")
+        
+        return top_results
 
-# fix: pad-batch collate for variable lengths
+
+def main():
+    """Main function for model evaluation."""
+    import argparse
+    
+    parser = argparse.ArgumentParser(description="Evaluate Lexical Semantic Embedding Model")
+    parser.add_argument("--model-path", type=str, required=True, help="Path to trained model")
+    parser.add_argument("--datasets", nargs="+", default=["sts-benchmark", "sick"], help="Datasets to evaluate")
+    parser.add_argument("--output-dir", type=str, default="./evaluation_results", help="Output directory")
+    parser.add_argument("--batch-size", type=int, default=32, help="Batch size for evaluation")
+    parser.add_argument("--create-plots", action="store_true", help="Create evaluation plots")
+    
+    args = parser.parse_args()
+    
+    # Setup logging
+    setup_logging("INFO")
+    
+    # Get device
+    device = get_device()
+    
+    # Load model
+    try:
+        model = LexicalSemanticEmbeddingModel.load_model(args.model_path, device)
+        logger.info(f"Model loaded from {args.model_path}")
+    except Exception as e:
+        logger.error(f"Error loading model: {e}")
+        return
+    
+    # Create data configuration
+    data_config = DataConfig()
+    
+    # Create evaluator
+    evaluator = ModelEvaluator(model, data_config, device, args.batch_size)
+    
+    # Create output directory
+    output_dir = create_experiment_dir(args.output_dir, "evaluation")
+    
+    # Evaluate datasets
+    all_results = {}
+    
+    for dataset_name in args.datasets:
+        logger.info(f"Evaluating on {dataset_name}...")
+        try:
+            results = evaluator.evaluate_dataset(dataset_name)
+            all_results[dataset_name] = results
+        except Exception as e:
+            logger.error(f"Error evaluating {dataset_name}: {e}")
+    
+    # Generate report
+    evaluator.generate_evaluation_report(all_results, output_dir / "evaluation_report.json")
+    
+    # Create plots if requested
+    if args.create_plots:
+        evaluator.create_evaluation_plots(all_results, output_dir / "plots")
+    
+    # Demo semantic search
+    demo_sentences = [
+        "The cat sat on the mat.",
+        "A feline rested on the carpet.",
+        "The dog barked loudly.",
+        "Machine learning is fascinating.",
+        "Artificial intelligence is the future.",
+        "The weather is nice today."
+    ]
+    
+    query = "A cat is sitting on a rug."
+    evaluator.semantic_search_demo(query, demo_sentences)
+    
+    logger.info("Evaluation completed!")
+
+
+if __name__ == "__main__":
+    main()

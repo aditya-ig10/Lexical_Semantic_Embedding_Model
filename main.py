@@ -498,3 +498,111 @@ def run_inference(args: argparse.Namespace) -> None:
             input_ids_2=tokens2['input_ids'],
             attention_mask_1=tokens1['attention_mask'],
             attention_mask_2=tokens2['attention_mask']
+        )
+    
+    similarity_score = outputs['similarity'].item()
+    
+    print(f"\nText 1: {args.text1}")
+    print(f"Text 2: {args.text2}")
+    print(f"Similarity Score: {similarity_score:.4f}")
+    
+    # Get individual embeddings
+    embedding1 = outputs['embedding1'].cpu().numpy()
+    embedding2 = outputs['embedding2'].cpu().numpy()
+    
+    print(f"Embedding 1 shape: {embedding1.shape}")
+    print(f"Embedding 2 shape: {embedding2.shape}")
+
+
+def export_model(args: argparse.Namespace) -> None:
+    """
+    Export model to different formats.
+    
+    Args:
+        args: Command line arguments
+    """
+    logger.info(f"Exporting model to {args.format} format...")
+    
+    # Set device
+    device = get_device()
+    
+    # Load model
+    try:
+        model = LexicalSemanticEmbeddingModel.load_model(args.model_path, device)
+        model.eval()
+        logger.info(f"Model loaded from {args.model_path}")
+    except Exception as e:
+        logger.error(f"Error loading model: {e}")
+        sys.exit(1)
+    
+    # Create example input
+    batch_size = 1
+    seq_len = args.seq_length
+    
+    example_input = {
+        'input_ids_1': torch.randint(1, 1000, (batch_size, seq_len), device=device),
+        'input_ids_2': torch.randint(1, 1000, (batch_size, seq_len), device=device),
+        'attention_mask_1': torch.ones(batch_size, seq_len, device=device),
+        'attention_mask_2': torch.ones(batch_size, seq_len, device=device)
+    }
+    
+    # Export based on format
+    if args.format == 'onnx':
+        model.export_to_onnx(args.output_path, example_input)
+    elif args.format == 'torchscript':
+        # Export to TorchScript
+        traced_model = torch.jit.trace(model, (
+            example_input['input_ids_1'],
+            example_input['input_ids_2'],
+            example_input['attention_mask_1'],
+            example_input['attention_mask_2']
+        ))
+        traced_model.save(args.output_path)
+        logger.info(f"Model exported to TorchScript format at {args.output_path}")
+    else:
+        logger.error(f"Export format {args.format} not yet implemented")
+        sys.exit(1)
+
+
+def main():
+    """Main entry point."""
+    args = parse_arguments()
+    
+    # Set random seed
+    set_seed(args.seed)
+    
+    # Setup logging
+    setup_logging(args.log_level, args.log_file)
+    
+    logger.info(f"Starting Lexical Semantic Embedding Model - Command: {args.command}")
+    logger.info(f"Arguments: {vars(args)}")
+    
+    try:
+        if args.command == 'train':
+            train_model(args)
+        elif args.command == 'evaluate':
+            evaluate_model(args)
+        elif args.command == 'prepare-data':
+            prepare_data(args)
+        elif args.command == 'infer':
+            run_inference(args)
+        elif args.command == 'export':
+            export_model(args)
+        else:
+            logger.error(f"Unknown command: {args.command}")
+            sys.exit(1)
+            
+    except KeyboardInterrupt:
+        logger.info("Operation interrupted by user")
+        sys.exit(0)
+    except Exception as e:
+        logger.error(f"Unexpected error: {e}")
+        import traceback
+        traceback.print_exc()
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    # Import modules that might not be available during argument parsing
+    import importlib.util
+    main()
