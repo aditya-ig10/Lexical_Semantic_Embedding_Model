@@ -28,3 +28,42 @@ plotly>=5.10.0
 
 # Experiment tracking and monitoring
 wandb>=0.13.0
+tensorboard>=2.10.0
+
+# Jupyter notebook support
+jupyter>=1.0.0
+notebook>=6.4.0
+ipykernel>=6.15.0
+ipywidgets>=7.7.0
+
+# Testing and code quality
+pytest>=7.1.0
+pytest-cov>=3.0.0
+black>=22.6.0
+flake8>=5.0.0
+mypy>=0.971
+
+# Development utilities
+pre-commit>=2.20.0
+isort>=5.10.0
+
+# Optional dependencies for specific features
+# GPU support (uncomment if using CUDA)
+# torch-audio>=0.12.0 --extra-index-url https://download.pytorch.org/whl/cu118
+
+# For ONNX export
+onnx>=1.12.0
+onnxruntime>=1.12.0
+
+# For advanced optimizations
+# apex  # NVIDIA Apex for mixed precision training
+
+# Web interface (optional)
+streamlit>=1.12.0
+gradio>=3.1.0
+
+# Additional ML utilities
+optuna>=3.0.0  # Hyperparameter optimization
+hydra-core>=1.2.0  # Configuration management
+rich>=12.5.0  # Rich terminal output
+psutil>=5.9.0  # System monitoring

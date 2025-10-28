@@ -138,5 +138,3 @@ RUN mkdir -p data/raw data/processed data/embeddings \
 
 # Set default command
 CMD ["python", "main.py", "--help"]
-
-# fix: apt libgomp1 for sklearn/faiss
