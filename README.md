@@ -278,3 +278,133 @@ docker-compose build lexical-dev
 
 # Run with mounted volumes for development
 docker-compose up lexical-dev
+
+# Run specific services
+docker-compose up lexical-train  # Training
+docker-compose up lexical-eval   # Evaluation
+```
+
+## 🔧 Advanced Usage
+
+### Custom Datasets
+
+```python
+from scripts.preprocess import TextPreprocessor
+
+# Create custom dataset processor
+preprocessor = TextPreprocessor()
+
+# Process your data
+processed_data = preprocessor.process_similarity_dataset(
+    sentences1=your_sentences1,
+    sentences2=your_sentences2,
+    scores=your_scores,
+    dataset_name="custom_dataset"
+)
+```
+
+### Model Export
+
+```python
+# Export to ONNX
+model.export_onnx("models/model.onnx", input_shape=(1, 50))
+
+# Export to TorchScript
+model.export_torchscript("models/model.pt")
+
+# Save with metadata
+model.save_model("models/my_model.pt", metadata={
+    "training_dataset": "custom",
+    "training_epochs": 50,
+    "validation_score": 0.85
+})
+```
+
+### Distributed Training
+
+```bash
+# Multi-GPU training
+python -m torch.distributed.launch --nproc_per_node=2 scripts/train.py \
+  --config config/train_config.py --distributed
+
+# Or with Docker
+docker-compose -f docker-compose.gpu.yml up lexical-train-multi-gpu
+```
+
+## 📝 Supported Datasets
+
+### Built-in Support
+- **STS Benchmark**: Semantic Textual Similarity benchmark dataset
+- **SICK**: Sentences Involving Compositional Knowledge
+- **Quora Question Pairs**: Duplicate question detection dataset
+- **MRPC**: Microsoft Research Paraphrase Corpus
+
+### Adding Custom Datasets
+
+1. Add dataset configuration to `config/data_config.py`
+2. Implement download logic in `scripts/data_download.py`
+3. Add preprocessing in `scripts/preprocess.py`
+4. Update evaluation in `scripts/evaluate.py`
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+### Development Guidelines
+
+- Follow PEP 8 style guidelines
+- Add comprehensive docstrings
+- Include unit tests for new features
+- Update documentation as needed
+- Ensure backward compatibility
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 🙏 Acknowledgments
+
+- Inspired by modern transformer architectures and attention mechanisms
+- Built on PyTorch framework for deep learning
+- Uses various open-source datasets for training and evaluation
+- Community contributions and feedback
+
+## 📞 Support
+
+- **Issues**: Open an issue on GitHub for bugs or feature requests
+- **Questions**: Use GitHub Discussions for questions and support
+- **Documentation**: Check the notebooks for detailed examples
+- **Community**: Join our community discussions
+
+## 🗺️ Roadmap
+
+### Current Version (v1.0)
+- ✅ BiLSTM + Attention architecture
+- ✅ Multi-dataset support
+- ✅ Docker deployment
+- ✅ Comprehensive evaluation
+
+### Upcoming Features (v1.1)
+- 🔄 Transformer-based encoder option
+- 🔄 Pre-trained embeddings integration
+- 🔄 API server deployment
+- 🔄 Model quantization support
+
+### Future Plans (v2.0)
+- 🔮 Multi-lingual support
+- 🔮 Few-shot learning capabilities
+- 🔮 Real-time training updates
+- 🔮 Advanced visualization tools
+
+---
+
+**Happy coding!** 🚀
+
+For more information, check out our [documentation](docs/) and [examples](examples/).
+---
+
+### Regards - Aviral Chandra
