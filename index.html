@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>LexSem Atlas</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700;900&family=Plus+Jakarta+Sans:wght@400;500;700;800&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+:root{
+  --bg:#F6F3EA;--bg2:#EFE9D8;--paper:#FFFDF6;--ink:#16130C;--ink2:#4A4436;--line:#16130C;--muted:#6F6757;
+  --tang:#FF5A1F;--cobalt:#2B44FF;--lime:#D8FF3E;--lilac:#C9B8FF;--pink:#FF7AD9;--mint:#7DF0C8;--sun:#FFC531;
+  --card-shadow:6px 6px 0 var(--line);--r:18px;color-scheme:light;
+  --display:"Unbounded",system-ui,sans-serif;--body:"Plus Jakarta Sans",system-ui,sans-serif;--mono:"JetBrains Mono",ui-monospace,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#14110B;--bg2:#1D1912;--paper:#201B13;--ink:#FFF6E5;--ink2:#D8CDB4;--line:#FFF6E5;--muted:#A79B82;
+  --tang:#FF6B35;--cobalt:#4F66FF;--lilac:#B79CFF;--pink:#FF8ADC;--mint:#6FF2C4;color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#14110B;--bg2:#1D1912;--paper:#201B13;--ink:#FFF6E5;--ink2:#D8CDB4;--line:#FFF6E5;--muted:#A79B82;
+  --tang:#FF6B35;--cobalt:#4F66FF;--lilac:#B79CFF;--pink:#FF8ADC;--mint:#6FF2C4;color-scheme:dark}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:90px;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);margin:0;padding-bottom:80px;line-height:1.6;overflow-x:hidden}
+.wrap{max-width:1180px;margin:0 auto;padding-inline:20px}
+a{color:inherit}
+:focus-visible{outline:3px solid var(--tang);outline-offset:3px}
+/* nav */
+.nav{position:sticky;top:env(safe-area-inset-top,0px);z-index:50;background:var(--bg);border-bottom:3px solid var(--line)}
+.nav-in{display:flex;align-items:center;gap:14px;padding:12px 20px;max-width:1180px;margin:0 auto;flex-wrap:wrap}
+.logo{font-family:var(--display);font-weight:900;font-size:18px;background:var(--ink);color:var(--bg);padding:6px 12px;border-radius:999px;transform:rotate(-3deg)}
+.logo em{font-style:normal;background:var(--lime);color:#16130C;border-radius:999px;padding:0 8px;margin-left:6px}
+.links{display:flex;gap:16px;margin-left:auto;flex-wrap:wrap;font-weight:800;font-size:13px;text-transform:uppercase;letter-spacing:.08em}
+.links a{text-decoration:none;border-bottom:2px solid transparent}
+.links a:hover{border-color:var(--tang)}
+.btn{font-family:var(--body);font-weight:800;border:3px solid var(--line);border-radius:999px;padding:8px 16px;cursor:pointer;background:var(--sun);color:#16130C;box-shadow:3px 3px 0 var(--line);font-size:13px;text-transform:uppercase;letter-spacing:.06em}
+.btn:active{transform:translate(2px,2px);box-shadow:1px 1px 0 var(--line)}
+.btn.ghost{background:var(--paper);color:var(--ink)}
+/* hero */
+.hero{padding-top:42px}
+.eyebrow{display:inline-flex;font-family:var(--mono);font-size:12px;font-weight:700;border:3px solid var(--line);border-radius:999px;padding:6px 14px;background:var(--lilac);color:#16130C;box-shadow:4px 4px 0 var(--line);text-transform:uppercase;letter-spacing:.08em}
+.hero h1{font-family:var(--display);font-weight:900;line-height:1.05;letter-spacing:-.02em;font-size:clamp(38px,7vw,96px);margin:22px 0 14px;text-wrap:balance}
+.hero h1 .stroke{color:var(--bg);-webkit-text-stroke:5px var(--ink);paint-order:stroke fill;letter-spacing:.015em}
+.hl,.hl2{padding:0 14px;border:3px solid var(--line);border-radius:16px;display:inline-block;color:#16130C}
+.hl{background:var(--lime);transform:rotate(-1.5deg)}
+.hl2{background:var(--tang);color:#fff;transform:rotate(1.2deg)}
+.sub{max-width:62ch;font-size:clamp(16px,2vw,19px);color:var(--ink2);font-weight:500}
+.cta-row{display:flex;gap:12px;flex-wrap:wrap;margin-top:20px}
+/* stats */
+.stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:18px;margin-top:34px}
+.stat{border:3px solid var(--line);border-radius:var(--r);padding:20px 18px;box-shadow:var(--card-shadow);min-width:0;color:#16130C}
+.stat:nth-child(1){background:var(--lime);transform:rotate(-1deg)}
+.stat:nth-child(2){background:var(--sun);transform:rotate(.8deg)}
+.stat:nth-child(3){background:var(--pink);transform:rotate(-.6deg)}
+.stat:nth-child(4){background:var(--mint);transform:rotate(.9deg)}
+.stat .num{font-family:var(--display);font-weight:900;font-size:clamp(34px,4.4vw,54px);line-height:1;display:block;letter-spacing:-.02em;white-space:nowrap}
+.stat .num small{font-size:.45em;margin-left:4px}
+.stat .lbl{font-family:var(--body);font-size:14px;font-weight:800;display:block;margin-top:10px;line-height:1.3}
+.stat .sublbl{font-family:var(--mono);font-size:11.5px;font-weight:700;display:block;margin-top:2px;opacity:.8}
+/* marquee */
+.marquee{border-block:3px solid var(--line);background:var(--ink);color:var(--bg);overflow:hidden;white-space:nowrap;margin-top:40px}
+.marquee div{display:inline-block;padding:10px 0;font-family:var(--display);font-weight:800;font-size:15px;letter-spacing:.06em;animation:slide 30s linear infinite}
+@keyframes slide{to{transform:translateX(-50%)}}
+section{margin-top:64px}
+.kicker{font-family:var(--mono);font-size:12px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;background:var(--ink);color:var(--bg);display:inline-block;padding:5px 12px;border-radius:999px;margin-bottom:12px}
+h2{font-family:var(--display);font-weight:900;font-size:clamp(26px,4.2vw,48px);line-height:1.1;margin:0 0 10px;text-wrap:balance}
+.lede{color:var(--ink2);max-width:70ch;margin:0 0 22px}
+/* bento */
+.bento{display:grid;grid-template-columns:1.2fr .8fr 1fr;grid-template-areas:"a a b" "c d b" "e e f";gap:16px}
+.card{background:var(--paper);border:3px solid var(--line);border-radius:var(--r);box-shadow:var(--card-shadow);padding:20px;min-width:0}
+.card h3{font-family:var(--display);font-size:17px;line-height:1.25;margin:0 0 8px}
+.card p{margin:0;color:var(--ink2);font-size:14.5px}
+.tag{font-family:var(--mono);font-size:10.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;border:2px solid currentColor;border-radius:999px;padding:3px 10px;display:inline-block;margin-bottom:10px}
+.b1{grid-area:a;background:var(--sun);color:#16130C}.b1 p{color:#3d2f10}
+.b2{grid-area:b}
+.b3{grid-area:c;background:var(--mint);color:#0f241c}.b3 p{color:#1d4a3c}
+.b4{grid-area:d;background:var(--lilac);color:#16130C}.b4 p{color:#3a2f5e}
+.b5{grid-area:e}
+.b6{grid-area:f;background:var(--ink);color:var(--bg)}.b6 p{color:var(--bg2)}
+.chip-row,.size-pick,.tabs{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.chip{font-family:var(--mono);font-size:12px;font-weight:700;border:2px solid currentColor;border-radius:999px;padding:5px 12px;cursor:pointer;background:transparent;color:inherit}
+.chip.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.b1 .chip.on{background:#16130C;color:var(--sun);border-color:#16130C}
+.pipe{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin-top:20px}
+.step{border:3px solid var(--line);border-radius:16px;padding:14px 8px;text-align:center;background:var(--paper);box-shadow:4px 4px 0 var(--line);min-width:0}
+.step b{font-family:var(--display);font-size:12px;display:block;margin-top:8px}
+.step small{font-family:var(--mono);font-size:11px;color:var(--muted)}
+.step .ico{font-size:26px}
+.step:nth-child(even){background:var(--lime);color:#16130C}.step:nth-child(even) small{color:#3d4a10}
+/* lab */
+.lab,.bench{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.lab-box{background:var(--paper);border:3px solid var(--line);border-radius:var(--r);box-shadow:var(--card-shadow);padding:20px;min-width:0}
+textarea{width:100%;border:3px solid var(--line);border-radius:12px;padding:12px;font-family:var(--body);font-size:15px;background:var(--bg);color:var(--ink);resize:vertical;min-height:76px}
+label{font-family:var(--mono);font-size:11px;font-weight:800;letter-spacing:.1em;text-transform:uppercase}
+.score-ring{width:160px;height:160px;border-radius:50%;border:6px solid var(--line);display:grid;place-items:center;margin:10px auto;background:conic-gradient(var(--tang) calc(var(--s,0)*1%),var(--bg2) 0);position:relative}
+.score-ring::before{content:"";position:absolute;inset:14px;border-radius:50%;background:var(--paper);border:3px solid var(--line)}
+.score-ring span{position:relative;font-family:var(--display);font-weight:900;font-size:34px}
+.heat{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
+.heat span{font-weight:700;font-size:14px;padding:4px 10px;border-radius:8px;border:2px solid var(--line)}
+.verdict{font-family:var(--mono);font-size:13px;font-weight:700;margin-top:12px;border:2px dashed var(--line);border-radius:12px;padding:10px 12px}
+/* bench */
+.bar-row{display:grid;grid-template-columns:100px 1fr 46px;gap:10px;align-items:center;margin:12px 0;font-family:var(--mono);font-size:12px;font-weight:700}
+.bar{height:22px;border:3px solid var(--line);border-radius:999px;background:var(--bg2);overflow:hidden}
+.bar i{display:block;height:100%;width:0;border-radius:999px;transition:width 1.2s cubic-bezier(.2,.9,.2,1)}
+table{width:100%;border-collapse:collapse;font-size:13.5px;margin-top:8px}
+th{font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:.08em;text-align:left;padding:8px;border-bottom:3px solid var(--line)}
+td{padding:9px 8px;border-bottom:2px solid var(--line);font-variant-numeric:tabular-nums}
+/* code */
+.term{background:#0E0C08;color:#F6F3EA;border:3px solid var(--line);border-radius:var(--r);box-shadow:var(--card-shadow);overflow:hidden}
+.term-bar{display:flex;gap:8px;padding:12px 16px;border-bottom:2px solid #333;align-items:center}
+.dot{width:12px;height:12px;border-radius:50%}
+pre{margin:0;padding:18px;overflow-x:auto;font-family:var(--mono);font-size:13px;line-height:1.7}
+.tabs{margin:0 0 12px}
+.tree{font-family:var(--mono);font-size:12.5px;background:var(--paper);border:3px solid var(--line);border-radius:var(--r);box-shadow:var(--card-shadow);padding:18px;overflow-x:auto;white-space:pre;line-height:1.8}
+.ds-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:18px}
+.ds{border:3px solid var(--line);border-radius:var(--r);padding:16px;box-shadow:var(--card-shadow);min-width:0;color:#16130C}
+.ds h4{font-family:var(--display);font-size:14px;margin:0 0 4px}
+.ds p{font-size:13px;margin:0;color:#3a3524}
+.ds .n{font-family:var(--display);font-weight:900;font-size:26px}
+.road{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.road .card{color:#16130C}.road .card p{color:#2f2a1c}
+footer{margin-top:64px;border:3px solid var(--line);border-radius:var(--r);background:#0E0C08;color:#F6F3EA;padding:26px;box-shadow:var(--card-shadow)}
+footer p{color:#D8CDB4}footer a{color:#D8FF3E;font-weight:700}
+.i{width:1.15em;height:1.15em;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;vertical-align:-.2em;flex:none}
+.btn{display:inline-flex;align-items:center;gap:7px}
+.chip{display:inline-flex;align-items:center;gap:6px}
+.tag .i{width:12px;height:12px;margin-right:4px;vertical-align:-.15em}
+.step .ico{display:flex;justify-content:center;height:30px}.step .ico .i{width:30px;height:30px}
+.marquee .i{width:16px;height:16px;margin:0 14px;vertical-align:-.15em;color:var(--lime)}
+.verdict .i{width:16px;height:16px}
+.reveal{opacity:0;transform:translateY(16px);transition:opacity .6s ease,transform .6s ease}
+.reveal.in{opacity:1;transform:none}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}.reveal{opacity:1;transform:none}}
+@media(max-width:900px){.bento{grid-template-columns:1fr 1fr;grid-template-areas:"a a" "b c" "b d" "e e" "f f"}.pipe{grid-template-columns:repeat(3,1fr)}.lab,.bench{grid-template-columns:1fr}.stat-grid,.ds-grid{grid-template-columns:1fr 1fr}.road{grid-template-columns:1fr}}
+@media(max-width:560px){.theme-txt{display:none}#themeBtn{padding:8px 10px}#themeBtn .i{width:20px;height:20px}.bento{grid-template-columns:1fr;grid-template-areas:"a" "b" "c" "d" "e" "f"}.pipe{grid-template-columns:1fr 1fr}.ds-grid{grid-template-columns:1fr}.links{display:none}.stat-grid{gap:14px}.bar-row{grid-template-columns:84px 1fr 42px}}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs><symbol id="i-embed" viewBox="0 0 24 24"><path d="M4 6h16M4 12h10M4 18h13"/></symbol><symbol id="i-swap" viewBox="0 0 24 24"><path d="M7 7h13M16 3l4 4-4 4M17 17H4M8 13l-4 4 4 4"/></symbol><symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></symbol><symbol id="i-pool" viewBox="0 0 24 24"><path d="M3 4h18l-7 9v6l-4 2v-8z"/></symbol><symbol id="i-compare" viewBox="0 0 24 24"><path d="M3 17L17 3l4 4L7 21z"/><path d="M7 13l2 2M10 10l2 2M13 7l2 2"/></symbol><symbol id="i-target" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.5"/></symbol><symbol id="i-play" viewBox="0 0 24 24"><path d="M7 4l13 8-13 8z"/></symbol><symbol id="i-bolt" viewBox="0 0 24 24"><path d="M13 2L4 14h7l-1 8 9-12h-7z"/></symbol><symbol id="i-copy" viewBox="0 0 24 24"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1"/></symbol><symbol id="i-theme" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor"/></symbol><symbol id="i-docker" viewBox="0 0 24 24"><path d="M3 8l9-5 9 5v8l-9 5-9-5z"/><path d="M3 8l9 5 9-5M12 13v8"/></symbol><symbol id="i-laptop" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M2 20h20"/></symbol><symbol id="i-code" viewBox="0 0 24 24"><path d="M8 7l-5 5 5 5M16 7l5 5-5 5M14 4l-4 16"/></symbol><symbol id="i-check" viewBox="0 0 24 24"><path d="M4 12l5 5L20 6"/></symbol><symbol id="i-x" viewBox="0 0 24 24"><path d="M5 5l14 14M19 5L5 19"/></symbol><symbol id="i-star" viewBox="0 0 24 24"><path d="M12 3l2.8 5.7 6.2.9-4.5 4.4 1.1 6.2L12 17.3 6.4 20.2l1.1-6.2L3 9.6l6.2-.9z"/></symbol><symbol id="i-spark" viewBox="0 0 24 24"><path d="M12 2l2.2 7.8L22 12l-7.8 2.2L12 22l-2.2-7.8L2 12l7.8-2.2z"/></symbol></defs></svg>
+<nav class="nav"><div class="nav-in">
+  <div class="logo">LEXSEM<em>ATLAS</em></div>
+  <div class="links"><a href="#arch">Architecture</a><a href="#lab">Live lab</a><a href="#bench">Benchmarks</a><a href="#start">Quickstart</a><a href="#road">Roadmap</a></div>
+  <button class="btn ghost" id="themeBtn" aria-label="Toggle theme" title="Toggle theme"><svg class="i" aria-hidden="true"><use href="#i-theme"/></svg><span class="theme-txt"> Theme</span></button>
+</div></nav>
+
+<div class="wrap">
+<header class="hero">
+  <span class="eyebrow">BiLSTM + Multi-Head Attention · PyTorch · v1.0</span>
+  <h1>Words that <span class="hl">know</span> <span class="stroke">each other</span> <span class="hl2">deeply.</span></h1>
+  <p class="sub">A production-ready <b>lexical semantic embedding model</b> that scores how alike two sentences are. Bidirectional LSTMs read both directions, 8-head attention finds what matters, and four similarity heads turn meaning into a number. Ships with Docker, notebooks, tests and evals.</p>
+  <div class="cta-row">
+    <a href="#lab"><button class="btn"><svg class="i" aria-hidden="true"><use href="#i-play"/></svg> Try the live lab</button></a>
+    <a href="#start"><button class="btn ghost"><svg class="i" aria-hidden="true"><use href="#i-bolt"/></svg> Quickstart</button></a>
+    <button class="btn ghost" id="copyClone"><svg class="i" aria-hidden="true"><use href="#i-copy"/></svg> Copy git clone</button>
+  </div>
+  <div class="stat-grid">
+    <div class="stat"><span class="num"><span class="count" data-n="0.85" data-dec="2">0.85</span></span><span class="lbl">Pearson correlation</span><span class="sublbl">STS Benchmark</span></div>
+    <div class="stat"><span class="num"><span class="count" data-n="134" data-dec="0">134</span><small>M</small></span><span class="lbl">Parameters</span><span class="sublbl">largest (BERT-like) config</span></div>
+    <div class="stat"><span class="num"><span class="count" data-n="4" data-dec="0">4</span><small>sets</small></span><span class="lbl">Benchmarks supported</span><span class="sublbl">STS · SICK · QQP · MRPC</span></div>
+    <div class="stat"><span class="num"><span class="count" data-n="10363" data-dec="0">10,363</span><small>+</small></span><span class="lbl">Lines of code</span><span class="sublbl">model, tests, Docker</span></div>
+  </div>
+</header>
+</div>
+
+<div class="marquee"><div id="mq">BILSTM ENCODER <svg class="i" aria-hidden="true"><use href="#i-spark"/></svg> 8-HEAD ATTENTION <svg class="i" aria-hidden="true"><use href="#i-spark"/></svg> COSINE · EUCLIDEAN · MANHATTAN · LEARNED <svg class="i" aria-hidden="true"><use href="#i-spark"/></svg> STS-BENCHMARK <svg class="i" aria-hidden="true"><use href="#i-spark"/></svg> SICK <svg class="i" aria-hidden="true"><use href="#i-spark"/></svg> QUORA QQP <svg class="i" aria-hidden="true"><use href="#i-spark"/></svg> MRPC <svg class="i" aria-hidden="true"><use href="#i-spark"/></svg> DOCKER CPU+GPU <svg class="i" aria-hidden="true"><use href="#i-spark"/></svg> ONNX EXPORT <svg class="i" aria-hidden="true"><use href="#i-spark"/></svg>&nbsp;</div></div>
+
+<div class="wrap">
+
+<section id="arch" class="reveal">
+  <span class="kicker">How it works</span>
+  <h2>The pipeline, step by step.</h2>
+  <p class="lede">Tokens go in, meaning vectors come out. Pick a similarity head to see when it wins.</p>
+  <div class="bento">
+    <div class="card b1"><span class="tag">Core idea</span><h3>BiLSTM reads both ways, attention decides what matters</h3>
+      <p>Embedding (300-d, plus positional) → 2-layer BiLSTM (512 hidden) → 8-head self-attention with residual + LayerNorm → mean/max pooling → similarity head → tanh/sigmoid score.</p>
+      <div class="chip-row" id="simChips">
+        <button class="chip on" data-s="cosine">cosine</button>
+        <button class="chip" data-s="euclidean">euclidean</button>
+        <button class="chip" data-s="manhattan">manhattan</button>
+        <button class="chip" data-s="learned">learned <svg class="i" aria-hidden="true"><use href="#i-star"/></svg></button>
+      </div>
+      <p id="simDesc" style="margin-top:10px;font-weight:700">cosine: angle between vectors. Best default for paraphrase and STS; immune to length.</p>
+    </div>
+    <div class="card b2"><span class="tag">Configs</span><h3>4 sizes, one API</h3><p>Use <span style="font-family:var(--mono)">ModelConfig.get_config(name)</span> for all. Switch to compare trade-offs.</p>
+      <div class="size-pick" id="sizePick"><button class="chip on" data-m="small">small</button><button class="chip" data-m="medium">medium</button><button class="chip" data-m="large">large</button><button class="chip" data-m="bert">bert-like</button></div>
+      <table><tr><th>Param</th><th>Value</th></tr>
+      <tr><td>embed_dim</td><td id="cE">128</td></tr><tr><td>hidden</td><td id="cH">256</td></tr><tr><td>CPU infer</td><td id="cC">15 ms</td></tr><tr><td>params</td><td id="cP">2.1M</td></tr></table>
+    </div>
+    <div class="card b3"><span class="tag">Data</span><h3>4 benchmarks, no glue code</h3><p>STS-Benchmark, SICK, Quora Question Pairs and MRPC. Download, preprocess and eval scripts included.</p></div>
+    <div class="card b4"><span class="tag">Attention</span><h3>8 heads, fully inspectable</h3><p>Scaled dot-product, padding masks, dropout 0.1, residual + LayerNorm. Try the lab to see weights light up.</p></div>
+    <div class="card b5"><span class="tag">Ship it</span><h3>Train, evaluate, export, serve</h3><p>CLI in <span style="font-family:var(--mono)">main.py</span>, W&amp;B + TensorBoard logging, ONNX and TorchScript export, CPU and GPU Docker Compose, 527-line pytest suite.</p></div>
+    <div class="card b6"><span class="tag">Why BiLSTM in 2026?</span><h3>Small, fast, honest baseline</h3><p>Transformers win at scale. This wins at <b>15 ms CPU inference</b>, full interpretability, and a codebase you can read in one sitting. A transformer encoder is planned for v1.1.</p></div>
+  </div>
+  <div class="pipe">
+    <div class="step"><div class="ico"><svg class="i" aria-hidden="true"><use href="#i-embed"/></svg></div><b>1 · Embed</b><small>30k vocab</small></div>
+    <div class="step"><div class="ico"><svg class="i" aria-hidden="true"><use href="#i-swap"/></svg></div><b>2 · BiLSTM</b><small>2 layers</small></div>
+    <div class="step"><div class="ico"><svg class="i" aria-hidden="true"><use href="#i-eye"/></svg></div><b>3 · Attend</b><small>8 heads</small></div>
+    <div class="step"><div class="ico"><svg class="i" aria-hidden="true"><use href="#i-pool"/></svg></div><b>4 · Pool</b><small>mean/max</small></div>
+    <div class="step"><div class="ico"><svg class="i" aria-hidden="true"><use href="#i-compare"/></svg></div><b>5 · Compare</b><small>4 heads</small></div>
+    <div class="step"><div class="ico"><svg class="i" aria-hidden="true"><use href="#i-target"/></svg></div><b>6 · Score</b><small>0–5 / 0–1</small></div>
+  </div>
+</section>
+
+<section id="lab" class="reveal">
+  <span class="kicker">Live lab</span>
+  <h2>Try it in your browser.</h2>
+  <p class="lede">This is a tiny JavaScript stand-in (token overlap plus a length heuristic) that mimics <span style="font-family:var(--mono)">compute_similarity()</span>. Real scores come from the PyTorch model; this shows their shape.</p>
+  <div class="lab">
+    <div class="lab-box">
+      <label for="s1">Sentence A</label>
+      <textarea id="s1">The cat sat on the mat</textarea>
+      <div style="height:10px"></div>
+      <label for="s2">Sentence B</label>
+      <textarea id="s2">A feline rested on the rug</textarea>
+      <div class="cta-row"><button class="btn" id="scoreBtn"><svg class="i" aria-hidden="true"><use href="#i-bolt"/></svg> Score similarity</button><button class="btn ghost" id="swapBtn"><svg class="i" aria-hidden="true"><use href="#i-swap"/></svg> Swap</button></div>
+      <div class="verdict" id="verdict">Press score to see a verdict and mock attention.</div>
+      <div class="heat" id="heat"></div>
+    </div>
+    <div class="lab-box" style="text-align:center">
+      <label>Similarity · cosine head</label>
+      <div class="score-ring" id="ring"><span id="scoreNum">0.00</span></div>
+      <p style="font-family:var(--mono);font-size:12px" id="realCode">model.compute_similarity(s1, s2) → 0.00</p>
+      <p style="font-size:13px;color:var(--ink2)">Paraphrase ≥ 0.75 · Related 0.4–0.75 · Unrelated &lt; 0.4. The real model reaches <b>0.85 Pearson</b> on STS-B.</p>
+    </div>
+  </div>
+</section>
+
+<section id="bench" class="reveal">
+  <span class="kicker">Benchmarks</span>
+  <h2>Results by dataset.</h2>
+  <p class="lede">Pearson correlation across all four sets, plus inference latency by model size.</p>
+  <div class="bench">
+    <div class="card"><span class="tag">Pearson by dataset</span><h3>Higher is closer to human ratings</h3><div id="bars"></div></div>
+    <div class="card"><span class="tag">Latency &amp; size</span><h3>Speed you can budget</h3>
+      <table><tr><th>Model</th><th>CPU</th><th>GPU</th><th>Params</th></tr>
+      <tr><td>small</td><td>15 ms</td><td>5 ms</td><td>2.1M</td></tr>
+      <tr><td>medium</td><td>25 ms</td><td>8 ms</td><td>8.4M</td></tr>
+      <tr><td>large</td><td>45 ms</td><td>15 ms</td><td>33.6M</td></tr>
+      <tr><td>bert-like</td><td>120 ms</td><td>35 ms</td><td>134.4M</td></tr></table>
+      <p style="margin-top:10px">Pearson / Spearman: STS-B 0.85/0.83 · SICK 0.78/0.76 · QQP 0.82/0.80 · MRPC 0.79/0.77.</p>
+    </div>
+  </div>
+</section>
+
+<section id="start" class="reveal">
+  <span class="kicker">Quickstart</span>
+  <h2>From zero to scores in a few commands.</h2>
+  <div class="tabs" id="qsTabs"><button class="chip on" data-t="docker"><svg class="i" aria-hidden="true"><use href="#i-docker"/></svg> Docker (recommended)</button><button class="chip" data-t="local"><svg class="i" aria-hidden="true"><use href="#i-laptop"/></svg> Local venv</button><button class="chip" data-t="api"><svg class="i" aria-hidden="true"><use href="#i-code"/></svg> Python API</button></div>
+  <div class="term"><div class="term-bar"><span class="dot" style="background:#FF5F57"></span><span class="dot" style="background:#FEBC2E"></span><span class="dot" style="background:#28C840"></span><span style="font-family:var(--mono);font-size:12px;color:#aaa" id="termTitle">docker — cpu setup</span></div>
+  <pre id="termBody">docker-compose up lexical-dev
+# Jupyter Lab → http://localhost:8888
+python scripts/data_download.py --datasets all --output-dir data/raw
+python scripts/preprocess.py --datasets sts-benchmark sick quora mrpc
+python scripts/train.py --config config/train_config.py --model-config medium
+python scripts/evaluate.py --model-path models/best_model.pt --datasets sts-benchmark sick</pre>
+  <div style="padding:0 16px 16px"><button class="btn ghost" id="copyTerm"><svg class="i" aria-hidden="true"><use href="#i-copy"/></svg> Copy commands</button></div></div>
+</section>
+
+<section class="reveal">
+  <span class="kicker">Project layout</span>
+  <h2>18 files, one clear tree.</h2>
+  <div class="tree">lexical_embedding_project/
+├── lexical_embedding_model.py  # BiLSTM + attention + 4 similarity heads (663 lines)
+├── main.py                     # CLI: train / evaluate / infer / prepare-data (608)
+├── test_model.py               # pytest suite: attention, encoder, edge cases (527)
+├── demo_script.py + sample_data.json # instant demo without training
+├── config/  model_config · data_config · train_config  # small→bert-like presets
+├── scripts/ download · preprocess · train · evaluate · utils
+├── notebooks/ exploration · evaluation · demo · visualization
+├── Dockerfile + docker-compose.yml + docker-compose.gpu.yml
+└── requirements.txt            # torch · transformers · datasets · wandb · optuna</div>
+  <div class="ds-grid">
+    <div class="ds" style="background:var(--lime)"><div class="n">STS-B</div><h4>Semantic Textual Similarity</h4><p>Graded 0–5 similarity. The headline metric.</p></div>
+    <div class="ds" style="background:#FFFDF6"><div class="n">SICK</div><h4>Compositional Knowledge</h4><p>Entailment-adjacent pairs, tough on syntax.</p></div>
+    <div class="ds" style="background:var(--lilac)"><div class="n">QQP</div><h4>Quora Question Pairs</h4><p>Duplicate-question detection at scale.</p></div>
+    <div class="ds" style="background:var(--sun)"><div class="n">MRPC</div><h4>MSR Paraphrase Corpus</h4><p>Binary paraphrase, news-domain prose.</p></div>
+  </div>
+</section>
+
+<section id="road" class="reveal">
+  <span class="kicker">Roadmap</span>
+  <h2>What's shipped and what's next.</h2>
+  <div class="road">
+    <div class="card" style="background:var(--mint)"><span class="tag"><svg class="i" aria-hidden="true"><use href="#i-check"/></svg> v1.0 · now</span><h3>Shipped</h3><p>BiLSTM + attention · multi-dataset · Docker CPU/GPU · full eval · ONNX export.</p></div>
+    <div class="card" style="background:var(--sun)"><span class="tag"><svg class="i" aria-hidden="true"><use href="#i-theme"/></svg> v1.1 · next</span><h3>Transformer encoder option</h3><p>Pre-trained embedding init · API server · quantization for edge inference.</p></div>
+    <div class="card" style="background:var(--pink)"><span class="tag"><svg class="i" aria-hidden="true"><use href="#i-spark"/></svg> v2.0 · later</span><h3>Multilingual + few-shot</h3><p>Multilingual encoders · real-time training updates · embedding-space explorer.</p></div>
+  </div>
+</section>
+
+<footer>
+  <div style="font-family:var(--display);font-weight:900;font-size:22px">LexSem Atlas: built to be read in one sitting.</div>
+  <p>Stack: PyTorch · BiLSTM · 8-head attention · scikit-learn · W&amp;B/TensorBoard · Docker · pytest/black/flake8/mypy. License MIT.</p>
+  <p><a href="#arch">Architecture</a> · <a href="#lab">Live lab</a> · <a href="#bench">Benchmarks</a> · <a href="#start">Quickstart</a></p>
+</footer>
+</div>
+
+<script>
+(function(){
+  var root=document.documentElement;
+  function $(id){return document.getElementById(id)}
+  function fmt(v,d){return v.toFixed(d).replace(/\B(?=(\d{3})+(?!\d))/g,',')}
+  try{var t=localStorage.getItem('lexsem-theme');if(t)root.setAttribute('data-theme',t)}catch(e){}
+  $('themeBtn').addEventListener('click',function(){
+    var cur=root.getAttribute('data-theme');
+    if(!cur)cur=window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';
+    cur=cur==='dark'?'light':'dark';
+    root.setAttribute('data-theme',cur);
+    try{localStorage.setItem('lexsem-theme',cur)}catch(e){}
+  });
+  var mq=$('mq');mq.innerHTML=mq.innerHTML+mq.innerHTML;
+
+  // stat counters: final values are in the HTML, so they stay visible if JS or animation fails
+  var reduce=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if('IntersectionObserver' in window&&!reduce){
+    var io=new IntersectionObserver(function(es){es.forEach(function(e){
+      if(!e.isIntersecting)return;io.unobserve(e.target);
+      var el=e.target,n=parseFloat(el.dataset.n),d=parseInt(el.dataset.dec||'0',10),t0=null;
+      function f(ts){if(!t0)t0=ts;var p=Math.min(1,(ts-t0)/1200);el.textContent=fmt(n*p,d);if(p<1)requestAnimationFrame(f);else el.textContent=fmt(n,d)}
+      requestAnimationFrame(f)})},{threshold:.4});
+    document.querySelectorAll('.count').forEach(function(el){io.observe(el)});
+    var io2=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){e.target.classList.add('in');io2.unobserve(e.target)}})},{threshold:.08});
+    document.querySelectorAll('.reveal').forEach(function(el){io2.observe(el)});
+  }else{document.querySelectorAll('.reveal').forEach(function(el){el.classList.add('in')})}
+
+  function pick(box,cb){box.addEventListener('click',function(e){var b=e.target.closest('.chip');if(!b)return;
+    box.querySelectorAll('.chip').forEach(function(c){c.classList.remove('on')});b.classList.add('on');cb(b)})}
+  var desc={cosine:'cosine: angle between vectors. Best default for paraphrase and STS; immune to length.',euclidean:'euclidean: straight-line distance in embedding space. Great when magnitude carries meaning.',manhattan:'manhattan: L1 distance. Robust to outliers, cheap to compute, strong on noisy text.',learned:'learned: MLP head [512→256] on [u; v; |u−v|; u*v]. Default in config and best overall score.'};
+  pick($('simChips'),function(b){$('simDesc').textContent=desc[b.dataset.s]});
+  var sizes={small:['128','256','15 ms','2.1M'],medium:['300','512','25 ms','8.4M'],large:['512','1024','45 ms','33.6M'],bert:['768','2048','120 ms','134.4M']};
+  pick($('sizePick'),function(b){var s=sizes[b.dataset.m];$('cE').textContent=s[0];$('cH').textContent=s[1];$('cC').textContent=s[2];$('cP').textContent=s[3]});
+
+  var data=[['STS-Bench',0.85,'#FF5A1F'],['Quora QQP',0.82,'#2B44FF'],['MRPC',0.79,'#FF7AD9'],['SICK',0.78,'#0E9F6E']];
+  var bars=$('bars');
+  data.forEach(function(d){var r=document.createElement('div');r.className='bar-row';
+    r.innerHTML='<span>'+d[0]+'</span><div class="bar"><i></i></div><b>'+d[1].toFixed(2)+'</b>';bars.appendChild(r);
+    var fill=r.querySelector('i');fill.style.background=d[2];setTimeout(function(){fill.style.width=(d[1]*100)+'%'},300)});
+
+  var terms={
+    docker:['docker — cpu setup',$('termBody').textContent],
+    local:['local — venv','python -m venv venv && source venv/bin/activate\npip install -r requirements.txt\npython scripts/data_download.py --datasets all --output-dir data/raw\npython main.py train --model-config large --epochs 50 --batch-size 64\npython main.py infer --model-path models/best_model.pt \\\n  --sentence1 "The cat sat on the mat" --sentence2 "A feline rested on the rug"'],
+    api:['python — api','from lexical_embedding_model import LexicalSemanticEmbeddingModel\nfrom config.model_config import ModelConfig\n\nmodel = LexicalSemanticEmbeddingModel(ModelConfig.get_config("medium"))\n# or: model = LexicalSemanticEmbeddingModel.load_model("models/best_model.pt")\nprint(model.compute_similarity("The cat sat on the mat",\n      "A feline rested on the rug"))  # → 0.87']};
+  pick($('qsTabs'),function(b){$('termTitle').textContent=terms[b.dataset.t][0];$('termBody').textContent=terms[b.dataset.t][1]});
+  function copyText(t,btn){var o=btn.innerHTML;function done(){btn.innerHTML='<svg class="i" aria-hidden="true"><use href="#i-check"/></svg> Copied';setTimeout(function(){btn.innerHTML=o},1400)}
+    if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(t).then(done,done)}else done()}
+  $('copyTerm').addEventListener('click',function(){copyText($('termBody').textContent,this)});
+  $('copyClone').addEventListener('click',function(){copyText('git clone <repository-url>\ncd lexical_embedding_project\ndocker-compose up lexical-dev',this)});
+
+  function toks(s){return s.toLowerCase().replace(/[^a-z0-9\s]/g,'').split(/\s+/).filter(Boolean)}
+  function score(a,b){var A=toks(a),B=toks(b);if(!A.length||!B.length)return 0;
+    var cnt={},inter=0;B.forEach(function(w){cnt[w]=(cnt[w]||0)+1});
+    A.forEach(function(w){if(cnt[w]>0){inter++;cnt[w]--}});
+    var m=Math.max(A.length,B.length),j=inter/m,len=1-Math.abs(A.length-B.length)/m;
+    return Math.min(0.99,0.25+0.6*j+0.15*len)}
+  var cols=['#FF5A1F','#2B44FF','#0E9F6E','#FF7AD9','#FFC531','#7D90FF'];
+  function render(a){var A=$('s1').value,B=$('s2').value,s=score(A,B);
+    $('scoreNum').textContent=s.toFixed(2);
+    $('ring').style.setProperty('--s',Math.round(s*100));
+    $('realCode').textContent='model.compute_similarity(s1, s2) → '+s.toFixed(2);
+    var k=s>=0.75?['check','PARAPHRASE']:(s>=0.4?['theme','RELATED: same topic, different claim']:['x','UNRELATED']);
+    $('verdict').innerHTML=(a||'cosine head · toy JS estimate')+' — <svg class="i" aria-hidden="true"><use href="#i-'+k[0]+'"/></svg> '+k[1];
+    var h=$('heat');h.innerHTML='';
+    toks(B).slice(0,14).forEach(function(w,i){var sp=document.createElement('span'),c=cols[i%cols.length];
+      var heat=0.25+0.75*Math.abs(Math.sin(i*1.7+s*5))*(0.4+0.6*score(w,A));
+      sp.textContent=w;sp.style.background=c+'33';sp.style.boxShadow='inset 0 -'+Math.round(heat*10)+'px 0 '+c;h.appendChild(sp)})}
+  $('scoreBtn').addEventListener('click',function(){render()});
+  $('swapBtn').addEventListener('click',function(){var a=$('s1'),b=$('s2'),t=a.value;a.value=b.value;b.value=t;render()});
+  render('ready');
+})();
+</script>
+</body>
+</html>
