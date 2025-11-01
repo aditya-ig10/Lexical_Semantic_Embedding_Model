@@ -421,6 +421,107 @@ class TestModelTraining(unittest.TestCase):
                 self.assertFalse(torch.isnan(param.grad).any(), f"NaN gradient for {name}")
 
 
+class TestModelPerformance(unittest.TestCase):
+    """Test model performance characteristics."""
+    
+    def setUp(self):
+        """Set up performance test fixtures."""
+        self.model = LexicalSemanticEmbeddingModel(
+            vocab_size=10000,
+            embed_dim=300,
+            hidden_dim=512,
+            num_layers=2
+        )
+        self.model.eval()
+    
+    def test_inference_speed(self):
+        """Test inference speed with different input sizes."""
+        import time
+        
+        sequence_lengths = [16, 32, 64, 128]
+        batch_sizes = [1, 4, 8]
+        
+        for seq_len in sequence_lengths:
+            for batch_size in batch_sizes:
+                with self.subTest(seq_len=seq_len, batch_size=batch_size):
+                    input_ids_1 = torch.randint(1, 10000, (batch_size, seq_len))
+                    input_ids_2 = torch.randint(1, 10000, (batch_size, seq_len))
+                    
+                    start_time = time.time()
+                    
+                    with torch.no_grad():
+                        outputs = self.model(input_ids_1, input_ids_2)
+                    
+                    inference_time = time.time() - start_time
+                    
+                    # Should complete within reasonable time
+                    self.assertLess(inference_time, 5.0)  # 5 seconds max
+                    
+                    # Check output validity
+                    self.assertEqual(outputs['similarity'].shape, (batch_size,))
+    
+    def test_memory_usage(self):
+        """Test memory usage doesn't grow unexpectedly."""
+        import gc
+        
+        initial_memory = torch.cuda.memory_allocated() if torch.cuda.is_available() else 0
+        
+        # Run multiple forward passes
+        for _ in range(10):
+            input_ids_1 = torch.randint(1, 10000, (4, 32))
+            input_ids_2 = torch.randint(1, 10000, (4, 32))
+            
+            with torch.no_grad():
+                outputs = self.model(input_ids_1, input_ids_2)
+            
+            del outputs, input_ids_1, input_ids_2
+            gc.collect()
+        
+        final_memory = torch.cuda.memory_allocated() if torch.cuda.is_available() else 0
+        
+        # Memory shouldn't grow significantly
+        if torch.cuda.is_available():
+            memory_growth = final_memory - initial_memory
+            self.assertLess(memory_growth, 100 * 1024 * 1024)  # Less than 100MB growth
 
-# fix: tmp_path for tokenizer cache, was hardcoded /data
-# full suite green: 18 passed
+
+def run_all_tests():
+    """Run all test suites."""
+    test_loader = unittest.TestLoader()
+    test_suite = unittest.TestSuite()
+    
+    # Add all test classes
+    test_classes = [
+        TestMultiHeadAttention,
+        TestPositionalEncoding,
+        TestBiLSTMEncoder,
+        TestLexicalSemanticEmbeddingModel,
+        TestUtilityFunctions,
+        TestModelTraining,
+        TestModelPerformance
+    ]
+    
+    for test_class in test_classes:
+        tests = test_loader.loadTestsFromTestCase(test_class)
+        test_suite.addTests(tests)
+    
+    # Run tests
+    runner = unittest.TextTestRunner(verbosity=2)
+    result = runner.run(test_suite)
+    
+    return result.wasSuccessful()
+
+
+if __name__ == "__main__":
+    # Set random seed for reproducible tests
+    torch.manual_seed(42)
+    np.random.seed(42)
+    
+    # Run tests
+    success = run_all_tests()
+    
+    if success:
+        print("\n✅ All tests passed!")
+    else:
+        print("\n❌ Some tests failed!")
+        exit(1)
